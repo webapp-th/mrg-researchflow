@@ -1,0 +1,3561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MRG ResearchFlow - Collaborative Research Management</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
+
+    <style>
+        :root {
+            --primary-pink: #f8d7da;
+            --light-pink: #f9ecef;
+            --accent-pink: #e9b7ce;
+            --dark-pink: #d48a9a;
+            --white: #ffffff;
+            --light-gray: #f5f5f5;
+            --medium-gray: #e0e0e0;
+            --dark-gray: #555555;
+            --text-color: #333333;
+            --border-radius: 8px;
+            --shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            --transition: all 0.3s ease;
+            --not-started: #ffcccc;
+            --in-progress: #fff2cc;
+            --done: #ccffcc;
+            --chat-bg: #f8f9fa;
+            --user-message: #e3f2fd;
+            --other-message: #f1f3f4;
+            --hover-pink: #f0c6d0;
+            --everyone-message: #e8f5e9;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--white);
+            color: var(--text-color);
+            line-height: 1.6;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        /* Authentication Styles */
+        .auth-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, var(--light-pink) 0%, var(--primary-pink) 100%);
+        }
+
+        .auth-form {
+            background-color: var(--white);
+            border-radius: var(--border-radius);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .auth-form h2 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: var(--dark-pink);
+        }
+
+        .auth-tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--medium-gray);
+        }
+
+        .auth-tab {
+            flex: 1;
+            text-align: center;
+            padding: 10px;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .auth-tab.active {
+            border-bottom: 2px solid var(--dark-pink);
+            color: var(--dark-pink);
+            font-weight: 600;
+        }
+
+        .auth-content {
+            display: none;
+        }
+
+        .auth-content.active {
+            display: block;
+        }
+
+        /* Header Styles */
+        .header {
+            background-color: var(--white);
+            padding: 20px;
+            box-shadow: var(--shadow);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo h1 {
+            font-size: 1.8rem;
+            color: var(--dark-pink);
+        }
+
+        .logo i {
+            font-size: 2rem;
+            color: var(--dark-pink);
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: var(--primary-pink);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--dark-pink);
+            font-weight: 600;
+        }
+
+        /* Navigation Tabs */
+        .tabs {
+            display: flex;
+            background-color: var(--light-pink);
+            border-bottom: 1px solid var(--medium-gray);
+            overflow-x: auto;
+        }
+
+        .tab {
+            padding: 15px 30px;
+            cursor: pointer;
+            transition: var(--transition);
+            border-bottom: 3px solid transparent;
+            font-weight: 600;
+            color: var(--dark-gray);
+            white-space: nowrap;
+        }
+
+        .tab.active {
+            border-bottom: 3px solid var(--dark-pink);
+            color: var(--dark-pink);
+            background-color: var(--white);
+        }
+
+        .tab:hover:not(.active) {
+            background-color: var(--primary-pink);
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            padding: 20px;
+            background-color: var(--white);
+            overflow-y: auto;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Add Project Form */
+        .form-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .form-section {
+            background-color: var(--light-pink);
+            border-radius: var(--border-radius);
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow);
+        }
+
+        .section-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: var(--dark-pink);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--medium-gray);
+            border-radius: var(--border-radius);
+            font-size: 1rem;
+            transition: var(--transition);
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--dark-pink);
+            box-shadow: 0 0 0 2px rgba(212, 138, 154, 0.2);
+        }
+
+        .status-toggle {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+
+        .toggle-option {
+            padding: 8px 15px;
+            border: 1px solid var(--medium-gray);
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            transition: var(--transition);
+            font-size: 0.9rem;
+        }
+
+        .toggle-option.not-started {
+            background-color: var(--not-started);
+        }
+
+        .toggle-option.in-progress {
+            background-color: var(--in-progress);
+        }
+
+        .toggle-option.done {
+            background-color: var(--done);
+        }
+
+        .toggle-option.active {
+            border: 2px solid var(--dark-pink);
+            font-weight: bold;
+        }
+
+        .conditional-field {
+            display: none;
+        }
+
+        .conditional-field.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .upload-area {
+            border: 2px dashed var(--medium-gray);
+            border-radius: var(--border-radius);
+            padding: 20px;
+            text-align: center;
+            margin-top: 10px;
+            transition: var(--transition);
+            cursor: pointer;
+        }
+
+        .upload-area:hover {
+            border-color: var(--dark-pink);
+            background-color: var(--light-pink);
+        }
+
+        .upload-area i {
+            font-size: 2rem;
+            color: var(--dark-pink);
+            margin-bottom: 10px;
+        }
+
+        .file-preview {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: var(--white);
+            border-radius: var(--border-radius);
+            border: 1px solid var(--medium-gray);
+        }
+
+        .file-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px;
+            border-bottom: 1px solid var(--light-gray);
+        }
+
+        .file-item:last-child {
+            border-bottom: none;
+        }
+
+        .file-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .file-icon {
+            color: var(--dark-pink);
+        }
+
+        .file-actions {
+            display: flex;
+            gap: 5px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            font-weight: 600;
+            transition: var(--transition);
+        }
+
+        .btn-primary {
+            background-color: var(--dark-pink);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: #c57687;
+        }
+
+        .btn-secondary {
+            background-color: var(--medium-gray);
+            color: var(--text-color);
+        }
+
+        .btn-secondary:hover {
+            background-color: #d0d0d0;
+        }
+
+        .btn-danger {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background-color: #c82333;
+        }
+
+        .btn-small {
+            padding: 5px 10px;
+            font-size: 0.8rem;
+        }
+
+        .form-actions {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 20px;
+            gap: 10px;
+        }
+
+        /* Dashboard Styles */
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .project-card {
+            background-color: var(--white);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            padding: 20px;
+            transition: var(--transition);
+            border-left: 4px solid var(--dark-pink);
+            position: relative;
+        }
+
+        .project-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .project-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: var(--dark-pink);
+        }
+
+        .project-meta {
+            font-size: 0.9rem;
+            color: var(--dark-gray);
+            margin-bottom: 15px;
+        }
+
+        .project-stages {
+            margin-top: 15px;
+        }
+
+        .stage {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            padding: 8px;
+            border-radius: var(--border-radius);
+            background-color: var(--light-pink);
+        }
+
+        .stage-icon {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background-color: var(--white);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 10px;
+            color: var(--dark-pink);
+        }
+
+        .stage-info {
+            flex: 1;
+        }
+
+        .stage-name {
+            font-weight: 500;
+        }
+
+        .stage-status {
+            font-size: 0.8rem;
+            color: var(--dark-gray);
+        }
+
+        .stage.not-started .stage-icon {
+            background-color: var(--not-started);
+        }
+
+        .stage.in-progress .stage-icon {
+            background-color: var(--in-progress);
+        }
+
+        .stage.done .stage-icon {
+            background-color: var(--done);
+        }
+
+        .project-actions {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 15px;
+            gap: 10px;
+        }
+
+        .export-actions {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 20px;
+            gap: 10px;
+        }
+
+        /* Chat House Styles */
+        .chat-house-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            height: calc(100vh - 200px);
+        }
+
+        .chat-house {
+            display: flex;
+            gap: 20px;
+            height: 100%;
+            background-color: var(--white);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+        }
+
+        .chat-rooms-sidebar {
+            width: 300px;
+            background-color: var(--light-pink);
+            border-right: 1px solid var(--medium-gray);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-room-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+        }
+
+        .chat-room-item {
+            padding: 12px 15px;
+            margin-bottom: 10px;
+            background-color: var(--white);
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            transition: var(--transition);
+            border-left: 4px solid transparent;
+        }
+
+        .chat-room-item:hover {
+            background-color: var(--primary-pink);
+            transform: translateX(5px);
+        }
+
+        .chat-room-item.active {
+            border-left-color: var(--dark-pink);
+            background-color: var(--primary-pink);
+        }
+
+        .chat-room-title {
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: var(--dark-pink);
+        }
+
+        .chat-room-meta {
+            font-size: 0.85rem;
+            color: var(--dark-gray);
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .chat-room-participants {
+            margin-top: 5px;
+            font-size: 0.8rem;
+            color: var(--dark-gray);
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .chat-main-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-header {
+            padding: 15px;
+            background-color: var(--light-pink);
+            border-bottom: 1px solid var(--medium-gray);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .current-chat-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: var(--dark-pink);
+        }
+
+        .current-chat-info {
+            font-size: 0.9rem;
+            color: var(--dark-gray);
+            margin-top: 5px;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background-color: var(--chat-bg);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .message-container {
+            max-width: 70%;
+            margin-bottom: 15px;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .message-container.current-user {
+            align-self: flex-end;
+        }
+
+        .message-container.other-user {
+            align-self: flex-start;
+        }
+
+        .message-bubble {
+            padding: 12px 15px;
+            border-radius: 18px;
+            position: relative;
+            word-wrap: break-word;
+        }
+
+        .current-user .message-bubble {
+            background-color: var(--user-message);
+            border-bottom-right-radius: 4px;
+        }
+
+        .other-user .message-bubble {
+            background-color: var(--other-message);
+            border-bottom-left-radius: 4px;
+        }
+
+        .message-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 5px;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .message-header:hover {
+            background-color: rgba(212, 138, 154, 0.1);
+            border-radius: 4px;
+            padding: 2px 5px;
+        }
+
+        .message-avatar {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background-color: var(--dark-pink);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+
+        .message-sender {
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: var(--dark-pink);
+        }
+
+        .message-text {
+            line-height: 1.4;
+            margin-left: 32px;
+        }
+
+        .message-time {
+            font-size: 0.75rem;
+            color: var(--dark-gray);
+            margin-top: 5px;
+            text-align: right;
+            margin-left: 32px;
+        }
+
+        .chat-input-container {
+            padding: 15px;
+            background-color: var(--white);
+            border-top: 1px solid var(--medium-gray);
+            display: flex;
+            gap: 10px;
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: 12px 15px;
+            border: 1px solid var(--medium-gray);
+            border-radius: var(--border-radius);
+            font-size: 1rem;
+            resize: none;
+            max-height: 100px;
+        }
+
+        .chat-input:focus {
+            outline: none;
+            border-color: var(--dark-pink);
+        }
+
+        .send-message-btn {
+            padding: 12px 25px;
+            background-color: var(--dark-pink);
+            color: white;
+            border: none;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            font-weight: 600;
+            transition: var(--transition);
+        }
+
+        .send-message-btn:hover {
+            background-color: #c57687;
+        }
+
+        .send-message-btn:disabled {
+            background-color: var(--medium-gray);
+            cursor: not-allowed;
+        }
+
+        .empty-chat-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: var(--dark-gray);
+        }
+
+        .empty-chat-icon {
+            font-size: 4rem;
+            color: var(--medium-gray);
+            margin-bottom: 20px;
+        }
+
+        .empty-chat-text {
+            font-size: 1.2rem;
+            text-align: center;
+            max-width: 400px;
+        }
+
+        /* User Action Menu */
+        .user-action-menu {
+            position: absolute;
+            background-color: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            padding: 10px 0;
+            min-width: 200px;
+            z-index: 1000;
+            display: none;
+            border: 1px solid var(--medium-gray);
+        }
+
+        .user-action-menu.show {
+            display: block;
+            animation: fadeIn 0.2s ease;
+        }
+
+        .user-action-item {
+            padding: 10px 15px;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .user-action-item:hover {
+            background-color: var(--light-pink);
+        }
+
+        .user-action-item i {
+            color: var(--dark-pink);
+            width: 20px;
+        }
+
+        /* Collaborator Management Styles */
+        .collaborator-management {
+            background-color: var(--light-pink);
+            border-radius: var(--border-radius);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .collaborator-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .collaborator-tag {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            background-color: var(--white);
+            border-radius: var(--border-radius);
+            border: 1px solid var(--medium-gray);
+        }
+
+        .remove-collaborator {
+            color: #dc3545;
+            cursor: pointer;
+            padding: 2px;
+        }
+
+        .remove-collaborator:hover {
+            color: #c82333;
+        }
+
+        /* Project Flow (Board View) */
+        .flow-board {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 20px;
+        }
+
+        .flow-board-card {
+            background-color: var(--white);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            padding: 20px;
+            border: 1px solid var(--medium-gray);
+            transition: var(--transition);
+        }
+
+        .flow-board-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .flow-board-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 15px;
+        }
+
+        .flow-board-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: var(--dark-pink);
+            margin-bottom: 5px;
+        }
+
+        .flow-board-owner {
+            font-size: 0.9rem;
+            color: var(--dark-gray);
+        }
+
+        .flow-board-date {
+            font-size: 0.8rem;
+            color: var(--dark-gray);
+        }
+
+        .flow-board-stats {
+            display: flex;
+            gap: 15px;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid var(--light-gray);
+        }
+
+        .stat-item {
+            text-align: center;
+            flex: 1;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--dark-pink);
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+            color: var(--dark-gray);
+            margin-top: 5px;
+        }
+
+        /* Chat Access Badge */
+        .chat-access-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px 10px;
+            background-color: var(--everyone-message);
+            border-radius: 15px;
+            font-size: 0.8rem;
+            margin-left: 10px;
+        }
+
+        /* Notifications */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            background-color: var(--dark-pink);
+            color: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            z-index: 1001;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transform: translateX(150%);
+            transition: transform 0.3s ease;
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1002;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background-color: var(--white);
+            border-radius: var(--border-radius);
+            padding: 30px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-title {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            color: var(--dark-pink);
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        /* Project Selection Modal */
+        .project-selection-list {
+            max-height: 300px;
+            overflow-y: auto;
+            margin: 15px 0;
+            border: 1px solid var(--medium-gray);
+            border-radius: var(--border-radius);
+        }
+
+        .project-selection-item {
+            padding: 12px 15px;
+            border-bottom: 1px solid var(--light-gray);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .project-selection-item:hover {
+            background-color: var(--light-pink);
+        }
+
+        .project-selection-item:last-child {
+            border-bottom: none;
+        }
+
+        /* Responsive Styles */
+        @media (max-width: 992px) {
+            .chat-house {
+                flex-direction: column;
+            }
+            
+            .chat-rooms-sidebar {
+                width: 100%;
+                height: 200px;
+                border-right: none;
+                border-bottom: 1px solid var(--medium-gray);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .tabs {
+                flex-direction: column;
+            }
+            
+            .tab {
+                text-align: center;
+            }
+            
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+            
+            .export-actions {
+                flex-direction: column;
+            }
+            
+            .project-actions {
+                flex-direction: column;
+            }
+            
+            .flow-board {
+                grid-template-columns: 1fr;
+            }
+            
+            .message-container {
+                max-width: 85%;
+            }
+            
+            .chat-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Authentication Screen -->
+    <div class="auth-container" id="authContainer">
+        <div class="auth-form">
+            <div class="logo" style="justify-content: center; margin-bottom: 20px;">
+                <i class="fas fa-project-diagram"></i>
+                <h1>MRG ResearchFlow</h1>
+            </div>
+            
+            <div class="auth-tabs">
+                <div class="auth-tab active" data-tab="login">Login</div>
+                <div class="auth-tab" data-tab="register">Register</div>
+            </div>
+            
+            <div class="auth-content active" id="loginForm">
+                <form id="loginFormElement">
+                    <div class="form-group">
+                        <label for="loginEmail">Email</label>
+                        <input type="email" id="loginEmail" class="form-control" placeholder="Enter your email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="loginPassword">Password</label>
+                        <input type="password" id="loginPassword" class="form-control" placeholder="Enter your password" required>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary" style="width: 100%;">Login</button>
+                    </div>
+                </form>
+            </div>
+            
+            <div class="auth-content" id="registerForm">
+                <form id="registerFormElement">
+                    <div class="form-group">
+                        <label for="registerName">Full Name</label>
+                        <input type="text" id="registerName" class="form-control" placeholder="Enter your full name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="registerEmail">Email</label>
+                        <input type="email" id="registerEmail" class="form-control" placeholder="Enter your email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="registerPassword">Password</label>
+                        <input type="password" id="registerPassword" class="form-control" placeholder="Create a password" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="registerConfirmPassword">Confirm Password</label>
+                        <input type="password" id="registerConfirmPassword" class="form-control" placeholder="Confirm your password" required>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary" style="width: 100%;">Register</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Application (Hidden until authenticated) -->
+    <div class="container" id="appContainer" style="display: none;">
+        <!-- Header -->
+        <div class="header">
+            <div class="logo">
+                <i class="fas fa-project-diagram"></i>
+                <h1>MRG ResearchFlow</h1>
+            </div>
+            <div class="user-info">
+                <span id="userWelcome">Welcome, User</span>
+                <div class="user-avatar" id="userAvatar">U</div>
+                <button class="btn btn-secondary" id="logoutBtn">Logout</button>
+            </div>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <div class="tabs">
+            <div class="tab active" data-tab="add-project">Add New Project</div>
+            <div class="tab" data-tab="dashboard">Dashboard</div>
+            <div class="tab" data-tab="chat-house">Chat House</div>
+            <div class="tab" data-tab="flow">Project Flow</div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Add Project Tab -->
+            <div class="tab-content active" id="add-project">
+                <div class="form-container">
+                    <input type="hidden" id="editingProjectId">
+                    
+                    <div class="form-section">
+                        <div class="section-title">
+                            <i class="fas fa-plus-circle"></i>
+                            <span id="formTitle">Project Details</span>
+                        </div>
+                        <div class="form-group">
+                            <label for="projectTitle">Project Title</label>
+                            <input type="text" id="projectTitle" class="form-control" placeholder="Enter project title">
+                        </div>
+                    </div>
+
+                    <!-- Proposal Section -->
+                    <div class="form-section">
+                        <div class="section-title">
+                            <i class="fas fa-file-alt"></i>
+                            Proposal
+                        </div>
+                        <div class="status-toggle" data-stage="proposal">
+                            <div class="toggle-option not-started active" data-status="not-started">Not Started</div>
+                            <div class="toggle-option in-progress" data-status="in-progress">In Progress</div>
+                            <div class="toggle-option done" data-status="done">Done</div>
+                        </div>
+                        <div class="conditional-field active" id="proposal-not-started">
+                            <p>This stage has not been started yet.</p>
+                        </div>
+                        <div class="conditional-field" id="proposal-in-progress">
+                            <p>Work on the proposal is currently in progress.</p>
+                            <div class="upload-area" id="proposalUpload">
+                                <i class="fas fa-cloud-upload-alt"></i>
+                                <p>Upload proposal draft (optional)</p>
+                                <input type="file" id="proposalFile" style="display: none;">
+                            </div>
+                            <div id="proposal-file-preview" class="file-preview" style="display: none;"></div>
+                        </div>
+                        <div class="conditional-field" id="proposal-done">
+                            <p>Proposal has been completed.</p>
+                            <div class="upload-area" id="proposalDoneUpload">
+                                <i class="fas fa-cloud-upload-alt"></i>
+                                <p>Upload final proposal document</p>
+                                <input type="file" id="proposalDoneFile" style="display: none;">
+                            </div>
+                            <div id="proposal-done-file-preview" class="file-preview" style="display: none;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Data Collection Tool Section -->
+                    <div class="form-section">
+                        <div class="section-title">
+                            <i class="fas fa-tools"></i>
+                            Data Collection Tool
+                        </div>
+                        <div class="status-toggle" data-stage="dataCollection">
+                            <div class="toggle-option not-started active" data-status="not-started">Not Started</div>
+                            <div class="toggle-option in-progress" data-status="in-progress">In Progress</div>
+                            <div class="toggle-option done" data-status="done">Done</div>
+                        </div>
+                        <div class="conditional-field active" id="dataCollection-not-started">
+                            <p>This stage has not been started yet.</p>
+                        </div>
+                        <div class="conditional-field" id="dataCollection-in-progress">
+                            <p>Data collection tool is being developed.</p>
+                            <div class="upload-area" id="toolUpload">
+                                <i class="fas fa-cloud-upload-alt"></i>
+                                <p>Upload tool draft (optional)</p>
+                                <input type="file" id="toolFile" style="display: none;">
+                            </div>
+                            <div class="form-group" style="margin-top: 10px;">
+                                <label for="toolLink">Or provide a link to the tool</label>
+                                <input type="url" id="toolLink" class="form-control" placeholder="https://...">
+                            </div>
+                            <div id="tool-file-preview" class="file-preview" style="display: none;"></div>
+                        </div>
+                        <div class="conditional-field" id="dataCollection-done">
+                            <p>Data collection tool has been finalized.</p>
+                            <div class="upload-area" id="toolDoneUpload">
+                                <i class="fas fa-cloud-upload-alt"></i>
+                                <p>Upload final data collection tool</p>
+                                <input type="file" id="toolDoneFile" style="display: none;">
+                            </div>
+                            <div class="form-group" style="margin-top: 10px;">
+                                <label for="toolDoneLink">Or provide a link to the final tool</label>
+                                <input type="url" id="toolDoneLink" class="form-control" placeholder="https://...">
+                            </div>
+                            <div id="tool-done-file-preview" class="file-preview" style="display: none;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Ethical Approval Section -->
+                    <div class="form-section">
+                        <div class="section-title">
+                            <i class="fas fa-clipboard-check"></i>
+                            Ethical Approval
+                        </div>
+                        <div class="status-toggle" data-stage="ethicalApproval">
+                            <div class="toggle-option not-started active" data-status="not-started">Not Started</div>
+                            <div class="toggle-option in-progress" data-status="in-progress">In Progress</div>
+                            <div class="toggle-option done" data-status="done">Done</div>
+                        </div>
+                        <div class="conditional-field active" id="ethicalApproval-not-started">
+                            <p>This stage has not been started yet.</p>
+                        </div>
+                        <div class="conditional-field" id="ethicalApproval-in-progress">
+                            <p>Ethical approval is being processed.</p>
+                            <div class="upload-area" id="ethicsUpload">
+                                <i class="fas fa-cloud-upload-alt"></i>
+                                <p>Upload ethics application (optional)</p>
+                                <input type="file" id="ethicsFile" style="display: none;">
+                            </div>
+                            <div id="ethics-file-preview" class="file-preview" style="display: none;"></div>
+                        </div>
+                        <div class="conditional-field" id="ethicalApproval-done">
+                            <p>Ethical approval has been obtained.</p>
+                            <div class="upload-area" id="ethicsDoneUpload">
+                                <i class="fas fa-cloud-upload-alt"></i>
+                                <p>Upload ethical approval document</p>
+                                <input type="file" id="ethicsDoneFile" style="display: none;">
+                            </div>
+                            <div id="ethics-done-file-preview" class="file-preview" style="display: none;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Data Analysis Section -->
+                    <div class="form-section">
+                        <div class="section-title">
+                            <i class="fas fa-chart-bar"></i>
+                            Data Analysis
+                        </div>
+                        <div class="status-toggle" data-stage="dataAnalysis">
+                            <div class="toggle-option not-started active" data-status="not-started">Not Started</div>
+                            <div class="toggle-option in-progress" data-status="in-progress">In Progress</div>
+                            <div class="toggle-option done" data-status="done">Done</div>
+                        </div>
+                        <div class="conditional-field active" id="dataAnalysis-not-started">
+                            <p>This stage has not been started yet.</p>
+                        </div>
+                        <div class="conditional-field" id="dataAnalysis-in-progress">
+                            <p>Data analysis is in progress.</p>
+                            <div class="form-group">
+                                <label for="analysisPerson">Person who is doing the analysis</label>
+                                <input type="text" id="analysisPerson" class="form-control" placeholder="Enter name">
+                            </div>
+                            <div class="upload-area" id="analysisUpload">
+                                <i class="fas fa-cloud-upload-alt"></i>
+                                <p>Upload preliminary results (optional)</p>
+                                <input type="file" id="analysisFile" style="display: none;">
+                            </div>
+                            <div id="analysis-file-preview" class="file-preview" style="display: none;"></div>
+                        </div>
+                        <div class="conditional-field" id="dataAnalysis-done">
+                            <p>Data analysis has been completed.</p>
+                            <div class="form-group">
+                                <label for="analysisDonePerson">Person who completed the analysis</label>
+                                <input type="text" id="analysisDonePerson" class="form-control" placeholder="Enter name">
+                            </div>
+                            <div class="upload-area" id="analysisDoneUpload">
+                                <i class="fas fa-cloud-upload-alt"></i>
+                                <p>Upload final analysis results</p>
+                                <input type="file" id="analysisDoneFile" style="display: none;">
+                            </div>
+                            <div id="analysis-done-file-preview" class="file-preview" style="display: none;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Manuscript Writing Section -->
+                    <div class="form-section">
+                        <div class="section-title">
+                            <i class="fas fa-pen-fancy"></i>
+                            Manuscript Writing
+                        </div>
+                        <div class="status-toggle" data-stage="manuscript">
+                            <div class="toggle-option not-started active" data-status="not-started">Not Started</div>
+                            <div class="toggle-option in-progress" data-status="in-progress">In Progress</div>
+                            <div class="toggle-option done" data-status="done">Done</div>
+                        </div>
+                        <div class="conditional-field active" id="manuscript-not-started">
+                            <p>This stage has not been started yet.</p>
+                        </div>
+                        <div class="conditional-field" id="manuscript-in-progress">
+                            <p>Manuscript writing is in progress.</p>
+                            <div class="form-group">
+                                <label for="writingPerson">Person(s) who are writing the manuscript</label>
+                                <input type="text" id="writingPerson" class="form-control" placeholder="Enter names">
+                            </div>
+                            <div class="upload-area" id="manuscriptUpload">
+                                <i class="fas fa-cloud-upload-alt"></i>
+                                <p>Upload manuscript draft (optional)</p>
+                                <input type="file" id="manuscriptFile" style="display: none;">
+                            </div>
+                            <div id="manuscript-file-preview" class="file-preview" style="display: none;"></div>
+                        </div>
+                        <div class="conditional-field" id="manuscript-done">
+                            <p>Manuscript writing has been completed.</p>
+                            <div class="form-group">
+                                <label for="writingDonePerson">Person(s) who completed the manuscript</label>
+                                <input type="text" id="writingDonePerson" class="form-control" placeholder="Enter names">
+                            </div>
+                            <div class="upload-area" id="manuscriptDoneUpload">
+                                <i class="fas fa-cloud-upload-alt"></i>
+                                <p>Upload final manuscript</p>
+                                <input type="file" id="manuscriptDoneFile" style="display: none;">
+                            </div>
+                            <div id="manuscript-done-file-preview" class="file-preview" style="display: none;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Submission Section -->
+                    <div class="form-section">
+                        <div class="section-title">
+                            <i class="fas fa-paper-plane"></i>
+                            Submission
+                        </div>
+                        <div class="status-toggle" data-stage="submission">
+                            <div class="toggle-option not-started active" data-status="not-started">Not Started</div>
+                            <div class="toggle-option in-progress" data-status="in-progress">In Progress</div>
+                            <div class="toggle-option done" data-status="done">Done</div>
+                        </div>
+                        <div class="conditional-field active" id="submission-not-started">
+                            <p>This stage has not been started yet.</p>
+                        </div>
+                        <div class="conditional-field" id="submission-in-progress">
+                            <p>Submission is being prepared.</p>
+                            <div class="form-group">
+                                <label for="submissionPerson">Person(s) who are handling submission</label>
+                                <input type="text" id="submissionPerson" class="form-control" placeholder="Enter names">
+                            </div>
+                            <div class="form-group">
+                                <label for="targetJournal">Target Journal</label>
+                                <input type="text" id="targetJournal" class="form-control" placeholder="Enter journal name">
+                            </div>
+                        </div>
+                        <div class="conditional-field" id="submission-done">
+                            <p>Submission has been completed.</p>
+                            <div class="form-group">
+                                <label for="submissionDonePerson">Person(s) who handled submission</label>
+                                <input type="text" id="submissionDonePerson" class="form-control" placeholder="Enter names">
+                            </div>
+                            <div class="form-group">
+                                <label for="submissionState">Current State</label>
+                                <select id="submissionState" class="form-control">
+                                    <option value="submitted">Submitted</option>
+                                    <option value="under-review">Under Review</option>
+                                    <option value="accepted">Accepted</option>
+                                    <option value="published">Published</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="submissionJournal">Journal Submitted To</label>
+                                <input type="text" id="submissionJournal" class="form-control" placeholder="Enter journal name">
+                            </div>
+                            <div class="upload-area" id="submissionUpload">
+                                <i class="fas fa-cloud-upload-alt"></i>
+                                <p>Upload submission confirmation (optional)</p>
+                                <input type="file" id="submissionFile" style="display: none;">
+                            </div>
+                            <div id="submission-file-preview" class="file-preview" style="display: none;"></div>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button class="btn btn-secondary" id="clearForm">Clear Form</button>
+                        <button class="btn btn-primary" id="saveProject">Save Project</button>
+                        <button class="btn btn-secondary" id="updateProject" style="display: none;">Update Project</button>
+                        <button class="btn btn-secondary" id="cancelEdit" style="display: none;">Cancel Edit</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dashboard Tab -->
+            <div class="tab-content" id="dashboard">
+                <h2 class="section-title" style="margin-bottom: 20px;">
+                    <i class="fas fa-tachometer-alt"></i>
+                    Project Dashboard
+                </h2>
+                
+                <div class="export-actions">
+                    <button class="btn btn-secondary" id="exportExcel">
+                        <i class="fas fa-file-excel"></i> Export to Excel
+                    </button>
+                    <button class="btn btn-secondary" id="exportPDF">
+                        <i class="fas fa-file-pdf"></i> Export to PDF
+                    </button>
+                </div>
+                
+                <div class="dashboard" id="projectsDashboard">
+                    <!-- Projects will be dynamically added here -->
+                </div>
+            </div>
+
+            <!-- Chat House Tab -->
+            <div class="tab-content" id="chat-house">
+                <div class="chat-house-container">
+                    <h2 class="section-title" style="margin-bottom: 20px;">
+                        <i class="fas fa-comments"></i>
+                        Chat House - Open for Everyone!
+                    </h2>
+                    
+                    <div class="form-section" style="margin-bottom: 20px;">
+                        <div class="section-title">
+                            <i class="fas fa-bullhorn"></i>
+                            Public Chat Rules
+                        </div>
+                        <p>All users can participate in any project chat! Click on user names to collaborate:</p>
+                        <ul style="margin-left: 20px; margin-top: 10px;">
+                            <li><strong>Everyone</strong> can send messages in any chat room</li>
+                            <li><strong>Project owners</strong> can click on user names to add them as collaborators</li>
+                            <li><strong>Collaborators</strong> get special permissions for project editing</li>
+                            <li>All conversations are saved and visible to all users</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="chat-house">
+                        <div class="chat-rooms-sidebar">
+                            <div class="form-section" style="margin: 0; border-radius: 0; border-bottom: 1px solid var(--medium-gray);">
+                                <div class="section-title">
+                                    <i class="fas fa-comments"></i>
+                                    All Project Chat Rooms
+                                </div>
+                            </div>
+                            <div class="chat-room-list" id="chatRoomList">
+                                <!-- Chat rooms will be dynamically added here -->
+                            </div>
+                        </div>
+                        
+                        <div class="chat-main-area">
+                            <div class="chat-header" id="chatHeader">
+                                <div style="flex: 1;">
+                                    <div class="empty-chat-state" id="emptyChatState">
+                                        <i class="fas fa-comment-dots empty-chat-icon"></i>
+                                        <div class="empty-chat-text">
+                                            Select a project chat room to start messaging
+                                        </div>
+                                    </div>
+                                    <div style="display: none;" id="activeChatHeader">
+                                        <div class="current-chat-title" id="currentChatTitle"></div>
+                                        <div class="current-chat-info" id="currentChatInfo">
+                                            <span class="chat-access-badge">
+                                                <i class="fas fa-globe"></i> Open Chat - Everyone Can Participate
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div style="display: none;" id="chatActions">
+                                    <button class="btn btn-small btn-primary" id="manageCollaboratorsBtn">
+                                        <i class="fas fa-user-plus"></i> Manage Collaborators
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="chat-messages" id="chatMessages" style="display: none;">
+                                <!-- Messages will be dynamically added here -->
+                            </div>
+                            
+                            <div class="chat-input-container" id="chatInputContainer" style="display: none;">
+                                <textarea class="chat-input" id="chatInput" placeholder="Type your message here... Anyone can participate!" rows="1"></textarea>
+                                <button class="send-message-btn" id="sendMessageBtn">
+                                    <i class="fas fa-paper-plane"></i> Send
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Flow Tab -->
+            <div class="tab-content" id="flow">
+                <div class="flow-container" style="max-width: 1200px; margin: 0 auto;">
+                    <h2 class="section-title" style="margin-bottom: 20px;">
+                        <i class="fas fa-th-large"></i>
+                        Project Flow Board
+                    </h2>
+                    
+                    <div class="form-section">
+                        <div class="section-title">
+                            <i class="fas fa-filter"></i>
+                            Filter Projects
+                        </div>
+                        <div class="form-group">
+                            <label for="flowFilter">Filter by Stage</label>
+                            <select id="flowFilter" class="form-control">
+                                <option value="all">All Projects</option>
+                                <option value="proposal">Proposal Stage</option>
+                                <option value="dataCollection">Data Collection</option>
+                                <option value="ethicalApproval">Ethical Approval</option>
+                                <option value="dataAnalysis">Data Analysis</option>
+                                <option value="manuscript">Manuscript Writing</option>
+                                <option value="submission">Submission</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="flow-board" id="flowProjectsList">
+                        <!-- All projects will be dynamically listed here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div class="modal" id="deleteModal">
+        <div class="modal-content">
+            <h3 class="modal-title">Confirm Deletion</h3>
+            <p>Are you sure you want to delete this project? This action cannot be undone.</p>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" id="cancelDelete">Cancel</button>
+                <button class="btn btn-danger" id="confirmDelete">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- User Action Menu -->
+    <div class="user-action-menu" id="userActionMenu">
+        <div class="user-action-item" id="addToCurrentProject">
+            <i class="fas fa-user-plus"></i>
+            <span>Add as collaborator to this project</span>
+        </div>
+        <div class="user-action-item" id="inviteToOtherProject">
+            <i class="fas fa-share-alt"></i>
+            <span>Invite to another project</span>
+        </div>
+        <div class="user-action-item" id="viewProfile">
+            <i class="fas fa-user"></i>
+            <span>View profile</span>
+        </div>
+    </div>
+
+    <!-- Project Selection Modal -->
+    <div class="modal" id="projectSelectionModal">
+        <div class="modal-content">
+            <h3 class="modal-title">Select a Project</h3>
+            <p>Choose a project to invite <span id="inviteUserName"></span> to:</p>
+            <div class="project-selection-list" id="projectSelectionList">
+                <!-- Projects will be dynamically added here -->
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" id="cancelProjectSelection">Cancel</button>
+                <button class="btn btn-primary" id="confirmInvite" disabled>Send Invitation</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Collaborator Management Modal -->
+    <div class="modal" id="collaboratorModal">
+        <div class="modal-content">
+            <h3 class="modal-title">Manage Collaborators</h3>
+            <div class="collaborator-management">
+                <p>Select collaborators who can edit this project:</p>
+                
+                <div class="form-group">
+                    <label for="collaboratorSearch">Search Users by Email</label>
+                    <input type="email" id="collaboratorSearch" class="form-control" placeholder="Enter user email">
+                    <div id="userSearchResults" style="margin-top: 10px;"></div>
+                </div>
+                
+                <div class="section-title">
+                    <i class="fas fa-user-friends"></i>
+                    Current Collaborators
+                </div>
+                <div class="collaborator-list" id="currentCollaboratorsList">
+                    <!-- Current collaborators will be listed here -->
+                </div>
+                
+                <div class="modal-actions" style="margin-top: 20px;">
+                    <button class="btn btn-secondary" id="closeCollaboratorModal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification System -->
+    <div class="notification" id="notification">
+        <i class="fas fa-info-circle"></i>
+        <span id="notificationText">This is a notification</span>
+    </div>
+
+    <script>
+        // ==================== FIREBASE CONFIGURATION ====================
+        const firebaseConfig = {
+            apiKey: "AIzaSyBXwxq9mUYqlzSdD7skoevmn6O2ef0NsII",
+            authDomain: "mrg-researchflow.firebaseapp.com",
+            projectId: "mrg-researchflow",
+            storageBucket: "mrg-researchflow.firebasestorage.app",
+            messagingSenderId: "668448384358",
+            appId: "1:668448384358:web:3235f23eca30b2206914a7"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+        const storage = firebase.storage();
+
+        // Global variables
+        let currentProjects = [];
+        let projectToDelete = null;
+        let currentChatRoom = null;
+        let chatUnsubscribe = null;
+        let currentUserData = null;
+        let selectedUserForAction = null;
+        let selectedProjectForInvite = null;
+
+        // ==================== AUTHENTICATION FUNCTIONS ====================
+        // Register new user
+        document.getElementById('registerFormElement').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const name = document.getElementById('registerName').value;
+            const email = document.getElementById('registerEmail').value;
+            const password = document.getElementById('registerPassword').value;
+            const confirmPassword = document.getElementById('registerConfirmPassword').value;
+            
+            if (password !== confirmPassword) {
+                showNotification('Passwords do not match!', 'error');
+                return;
+            }
+            
+            try {
+                const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+                const user = userCredential.user;
+                
+                // Save user profile in Firestore
+                await db.collection('users').doc(user.uid).set({
+                    name: name,
+                    email: email,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                
+                showNotification('Account created successfully!', 'success');
+                document.getElementById('registerFormElement').reset();
+                switchAuthTab('login');
+            } catch (error) {
+                showNotification('Error creating account: ' + error.message, 'error');
+            }
+        });
+
+        // Login user
+        document.getElementById('loginFormElement').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            
+            try {
+                await auth.signInWithEmailAndPassword(email, password);
+                showNotification('Logged in successfully!', 'success');
+            } catch (error) {
+                showNotification('Error logging in: ' + error.message, 'error');
+            }
+        });
+
+        // Logout user
+        document.getElementById('logoutBtn').addEventListener('click', async () => {
+            try {
+                await auth.signOut();
+                showNotification('Logged out successfully!', 'success');
+            } catch (error) {
+                showNotification('Error logging out: ' + error.message, 'error');
+            }
+        });
+
+        // Auth state listener
+        auth.onAuthStateChanged(async (user) => {
+            if (user) {
+                // User is signed in
+                try {
+                    const userDoc = await db.collection('users').doc(user.uid).get();
+                    if (userDoc.exists) {
+                        currentUserData = userDoc.data();
+                        
+                        document.getElementById('userWelcome').textContent = `Welcome, ${currentUserData.name}`;
+                        document.getElementById('userAvatar').textContent = currentUserData.name.charAt(0).toUpperCase();
+                        
+                        document.getElementById('authContainer').style.display = 'none';
+                        document.getElementById('appContainer').style.display = 'flex';
+                        
+                        // Load user's data
+                        loadDashboardProjects();
+                        loadAllProjectsForFlow();
+                        loadAllChatRooms();
+                        
+                        // Setup real-time listeners
+                        setupRealtimeListeners(user.uid);
+                    }
+                } catch (error) {
+                    console.error('Error loading user data:', error);
+                }
+            } else {
+                // User is signed out
+                document.getElementById('authContainer').style.display = 'flex';
+                document.getElementById('appContainer').style.display = 'none';
+                
+                // Clean up chat listener
+                if (chatUnsubscribe) {
+                    chatUnsubscribe();
+                    chatUnsubscribe = null;
+                }
+            }
+        });
+
+        // ==================== PROJECT MANAGEMENT ====================
+        // Save project to Firestore
+        document.getElementById('saveProject').addEventListener('click', async () => {
+            const projectTitle = document.getElementById('projectTitle').value;
+            
+            if (!projectTitle) {
+                showNotification('Please enter a project title!', 'error');
+                return;
+            }
+            
+            // Get status for each stage
+            const proposalStatus = document.querySelector('.status-toggle[data-stage="proposal"] .toggle-option.active').getAttribute('data-status');
+            const dataCollectionStatus = document.querySelector('.status-toggle[data-stage="dataCollection"] .toggle-option.active').getAttribute('data-status');
+            const ethicalApprovalStatus = document.querySelector('.status-toggle[data-stage="ethicalApproval"] .toggle-option.active').getAttribute('data-status');
+            const dataAnalysisStatus = document.querySelector('.status-toggle[data-stage="dataAnalysis"] .toggle-option.active').getAttribute('data-status');
+            const manuscriptStatus = document.querySelector('.status-toggle[data-stage="manuscript"] .toggle-option.active').getAttribute('data-status');
+            const submissionStatus = document.querySelector('.status-toggle[data-stage="submission"] .toggle-option.active').getAttribute('data-status');
+            
+            // Create project object
+            const project = {
+                title: projectTitle,
+                proposal: {
+                    status: proposalStatus,
+                    files: document.getElementById('proposalFile').files.length > 0 || document.getElementById('proposalDoneFile').files.length > 0
+                },
+                dataCollection: {
+                    status: dataCollectionStatus,
+                    files: document.getElementById('toolFile').files.length > 0 || document.getElementById('toolDoneFile').files.length > 0,
+                    link: document.getElementById('toolLink').value || document.getElementById('toolDoneLink').value
+                },
+                ethicalApproval: {
+                    status: ethicalApprovalStatus,
+                    files: document.getElementById('ethicsFile').files.length > 0 || document.getElementById('ethicsDoneFile').files.length > 0
+                },
+                dataAnalysis: {
+                    status: dataAnalysisStatus,
+                    files: document.getElementById('analysisFile').files.length > 0 || document.getElementById('analysisDoneFile').files.length > 0,
+                    person: document.getElementById('analysisPerson').value || document.getElementById('analysisDonePerson').value
+                },
+                manuscript: {
+                    status: manuscriptStatus,
+                    files: document.getElementById('manuscriptFile').files.length > 0 || document.getElementById('manuscriptDoneFile').files.length > 0,
+                    person: document.getElementById('writingPerson').value || document.getElementById('writingDonePerson').value
+                },
+                submission: {
+                    status: submissionStatus,
+                    files: document.getElementById('submissionFile').files.length > 0,
+                    person: document.getElementById('submissionPerson').value || document.getElementById('submissionDonePerson').value,
+                    journal: document.getElementById('targetJournal').value || document.getElementById('submissionJournal').value,
+                    state: document.getElementById('submissionState').value
+                },
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            };
+            
+            try {
+                const user = auth.currentUser;
+                const userDoc = await db.collection('users').doc(user.uid).get();
+                const userData = userDoc.data();
+                
+                // Add owner information
+                project.ownerId = user.uid;
+                project.ownerName = userData.name;
+                
+                const projectRef = await db.collection('projects').add(project);
+                
+                // Create initial chat room for the project
+                await db.collection('chats').doc(projectRef.id).set({
+                    projectId: projectRef.id,
+                    projectTitle: projectTitle,
+                    ownerId: user.uid,
+                    ownerName: userData.name,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                
+                // Add initial welcome message
+                await db.collection('chats').doc(projectRef.id).collection('messages').add({
+                    userId: user.uid,
+                    userName: userData.name,
+                    text: `Chat room created for project "${projectTitle}" - Everyone can participate!`,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                    system: true
+                });
+                
+                showNotification('Project saved successfully!', 'success');
+                document.getElementById('clearForm').click();
+                loadDashboardProjects();
+                loadAllProjectsForFlow();
+                loadAllChatRooms();
+            } catch (error) {
+                showNotification('Error saving project: ' + error.message, 'error');
+                console.error('Detailed error:', error);
+            }
+        });
+
+        // Update existing project
+        document.getElementById('updateProject').addEventListener('click', async () => {
+            const projectId = document.getElementById('editingProjectId').value;
+            const projectTitle = document.getElementById('projectTitle').value;
+            
+            if (!projectTitle) {
+                showNotification('Please enter a project title!', 'error');
+                return;
+            }
+            
+            // Get status for each stage
+            const proposalStatus = document.querySelector('.status-toggle[data-stage="proposal"] .toggle-option.active').getAttribute('data-status');
+            const dataCollectionStatus = document.querySelector('.status-toggle[data-stage="dataCollection"] .toggle-option.active').getAttribute('data-status');
+            const ethicalApprovalStatus = document.querySelector('.status-toggle[data-stage="ethicalApproval"] .toggle-option.active').getAttribute('data-status');
+            const dataAnalysisStatus = document.querySelector('.status-toggle[data-stage="dataAnalysis"] .toggle-option.active').getAttribute('data-status');
+            const manuscriptStatus = document.querySelector('.status-toggle[data-stage="manuscript"] .toggle-option.active').getAttribute('data-status');
+            const submissionStatus = document.querySelector('.status-toggle[data-stage="submission"] .toggle-option.active').getAttribute('data-status');
+            
+            // Create project object
+            const project = {
+                title: projectTitle,
+                proposal: {
+                    status: proposalStatus,
+                    files: document.getElementById('proposalFile').files.length > 0 || document.getElementById('proposalDoneFile').files.length > 0
+                },
+                dataCollection: {
+                    status: dataCollectionStatus,
+                    files: document.getElementById('toolFile').files.length > 0 || document.getElementById('toolDoneFile').files.length > 0,
+                    link: document.getElementById('toolLink').value || document.getElementById('toolDoneLink').value
+                },
+                ethicalApproval: {
+                    status: ethicalApprovalStatus,
+                    files: document.getElementById('ethicsFile').files.length > 0 || document.getElementById('ethicsDoneFile').files.length > 0
+                },
+                dataAnalysis: {
+                    status: dataAnalysisStatus,
+                    files: document.getElementById('analysisFile').files.length > 0 || document.getElementById('analysisDoneFile').files.length > 0,
+                    person: document.getElementById('analysisPerson').value || document.getElementById('analysisDonePerson').value
+                },
+                manuscript: {
+                    status: manuscriptStatus,
+                    files: document.getElementById('manuscriptFile').files.length > 0 || document.getElementById('manuscriptDoneFile').files.length > 0,
+                    person: document.getElementById('writingPerson').value || document.getElementById('writingDonePerson').value
+                },
+                submission: {
+                    status: submissionStatus,
+                    files: document.getElementById('submissionFile').files.length > 0,
+                    person: document.getElementById('submissionPerson').value || document.getElementById('submissionDonePerson').value,
+                    journal: document.getElementById('targetJournal').value || document.getElementById('submissionJournal').value,
+                    state: document.getElementById('submissionState').value
+                },
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            };
+            
+            try {
+                await db.collection('projects').doc(projectId).update(project);
+                
+                showNotification('Project updated successfully!', 'success');
+                resetFormToCreateMode();
+                loadDashboardProjects();
+                loadAllProjectsForFlow();
+                loadAllChatRooms();
+            } catch (error) {
+                showNotification('Error updating project: ' + error.message, 'error');
+                console.error('Detailed error:', error);
+            }
+        });
+
+        // Enhanced dashboard to show shared projects
+        async function loadDashboardProjects() {
+            const user = auth.currentUser;
+            if (!user) return;
+            
+            try {
+                console.log('Loading dashboard projects for user:', user.uid);
+                
+                // Load owned projects
+                const ownedProjectsSnapshot = await db.collection('projects')
+                    .where('ownerId', '==', user.uid)
+                    .get();
+                
+                const ownedProjects = [];
+                ownedProjectsSnapshot.forEach(doc => {
+                    const projectData = doc.data();
+                    ownedProjects.push({
+                        id: doc.id,
+                        ...projectData,
+                        isOwner: true
+                    });
+                });
+                
+                // Load shared projects
+                const collaborationsSnapshot = await db.collection('collaborations')
+                    .where('collaboratorId', '==', user.uid)
+                    .get();
+                
+                const sharedProjects = [];
+                for (const doc of collaborationsSnapshot.docs) {
+                    const collaboration = doc.data();
+                    const projectDoc = await db.collection('projects').doc(collaboration.projectId).get();
+                    
+                    if (projectDoc.exists) {
+                        const projectData = projectDoc.data();
+                        sharedProjects.push({
+                            id: projectDoc.id,
+                            ...projectData,
+                            isOwner: false,
+                            collaborationId: doc.id
+                        });
+                    }
+                }
+                
+                // Combine and sort all projects
+                const allProjects = [...ownedProjects, ...sharedProjects];
+                allProjects.sort((a, b) => {
+                    const dateA = a.createdAt?.toDate?.() || new Date(0);
+                    const dateB = b.createdAt?.toDate?.() || new Date(0);
+                    return dateB.getTime() - dateA.getTime();
+                });
+                
+                console.log('All dashboard projects:', allProjects);
+                currentProjects = allProjects;
+                displayDashboardProjects(allProjects);
+            } catch (error) {
+                console.error('Error loading dashboard projects:', error);
+                showNotification('Error loading projects: ' + error.message, 'error');
+            }
+        }
+
+        // Enhanced project display with collaboration status
+        function displayDashboardProjects(projects) {
+            const dashboard = document.getElementById('projectsDashboard');
+            dashboard.innerHTML = '';
+            
+            if (projects.length === 0) {
+                dashboard.innerHTML = '<p>No projects yet. Create your first project in the "Add New Project" tab.</p>';
+                return;
+            }
+            
+            projects.forEach(project => {
+                const projectCard = document.createElement('div');
+                projectCard.className = 'project-card';
+                
+                // Format date safely
+                let createdDate = 'Unknown date';
+                try {
+                    if (project.createdAt && project.createdAt.toDate) {
+                        createdDate = project.createdAt.toDate().toLocaleDateString();
+                    }
+                } catch (e) {
+                    console.log('Date formatting error:', e);
+                }
+                
+                // Add collaboration badge for shared projects
+                const collaborationBadge = project.isOwner ? 
+                    '' : 
+                    `<div class="collaborator-badge" style="margin-bottom: 10px;">
+                        <i class="fas fa-user-friends"></i> Shared by ${project.ownerName || 'Unknown'}
+                    </div>`;
+                
+                projectCard.innerHTML = `
+                    ${collaborationBadge}
+                    <div class="project-title">${project.title || 'Untitled Project'}</div>
+                    <div class="project-meta">Created: ${createdDate} ${project.isOwner ? '' : ' | Shared Project'}</div>
+                    <div class="project-stages">
+                        <div class="stage ${project.proposal?.status || 'not-started'}">
+                            <div class="stage-icon"><i class="fas fa-file-alt"></i></div>
+                            <div class="stage-info">
+                                <div class="stage-name">Proposal</div>
+                                <div class="stage-status">${(project.proposal?.status || 'not-started').replace('-', ' ').toUpperCase()}</div>
+                            </div>
+                        </div>
+                        <div class="stage ${project.dataCollection?.status || 'not-started'}">
+                            <div class="stage-icon"><i class="fas fa-tools"></i></div>
+                            <div class="stage-info">
+                                <div class="stage-name">Data Collection</div>
+                                <div class="stage-status">${(project.dataCollection?.status || 'not-started').replace('-', ' ').toUpperCase()}</div>
+                            </div>
+                        </div>
+                        <div class="stage ${project.ethicalApproval?.status || 'not-started'}">
+                            <div class="stage-icon"><i class="fas fa-clipboard-check"></i></div>
+                            <div class="stage-info">
+                                <div class="stage-name">Ethical Approval</div>
+                                <div class="stage-status">${(project.ethicalApproval?.status || 'not-started').replace('-', ' ').toUpperCase()}</div>
+                            </div>
+                        </div>
+                        <div class="stage ${project.dataAnalysis?.status || 'not-started'}">
+                            <div class="stage-icon"><i class="fas fa-chart-bar"></i></div>
+                            <div class="stage-info">
+                                <div class="stage-name">Data Analysis</div>
+                                <div class="stage-status">${(project.dataAnalysis?.status || 'not-started').replace('-', ' ').toUpperCase()}</div>
+                            </div>
+                        </div>
+                        <div class="stage ${project.manuscript?.status || 'not-started'}">
+                            <div class="stage-icon"><i class="fas fa-pen-fancy"></i></div>
+                            <div class="stage-info">
+                                <div class="stage-name">Manuscript Writing</div>
+                                <div class="stage-status">${(project.manuscript?.status || 'not-started').replace('-', ' ').toUpperCase()}</div>
+                            </div>
+                        </div>
+                        <div class="stage ${project.submission?.status || 'not-started'}">
+                            <div class="stage-icon"><i class="fas fa-paper-plane"></i></div>
+                            <div class="stage-info">
+                                <div class="stage-name">Submission</div>
+                                <div class="stage-status">${(project.submission?.status || 'not-started').replace('-', ' ').toUpperCase()}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="project-actions">
+                        <button class="btn btn-primary btn-small view-project" data-project-id="${project.id}">View</button>
+                        ${project.isOwner ? `
+                            <button class="btn btn-primary btn-small edit-project" data-project-id="${project.id}">Edit</button>
+                            <button class="btn btn-danger btn-small delete-project" data-project-id="${project.id}">Delete</button>
+                        ` : ''}
+                    </div>
+                `;
+                dashboard.appendChild(projectCard);
+            });
+            
+            // Update event listeners
+            document.querySelectorAll('.edit-project').forEach(button => {
+                button.addEventListener('click', function() {
+                    const projectId = this.getAttribute('data-project-id');
+                    editProject(projectId);
+                });
+            });
+            
+            document.querySelectorAll('.delete-project').forEach(button => {
+                button.addEventListener('click', function() {
+                    const projectId = this.getAttribute('data-project-id');
+                    showDeleteModal(projectId);
+                });
+            });
+            
+            document.querySelectorAll('.view-project').forEach(button => {
+                button.addEventListener('click', function() {
+                    const projectId = this.getAttribute('data-project-id');
+                    viewProject(projectId);
+                });
+            });
+        }
+
+        // View project function (for collaborators)
+        async function viewProject(projectId) {
+            try {
+                const projectDoc = await db.collection('projects').doc(projectId).get();
+                if (projectDoc.exists) {
+                    const project = projectDoc.data();
+                    
+                    // Create a read-only view modal
+                    const modal = document.createElement('div');
+                    modal.className = 'modal';
+                    modal.style.display = 'flex';
+                    modal.innerHTML = `
+                        <div class="modal-content" style="max-width: 800px; max-height: 80vh; overflow-y: auto;">
+                            <h3 class="modal-title">${project.title || 'Untitled Project'}</h3>
+                            <div class="form-section">
+                                <div class="section-title">Project Details</div>
+                                <p><strong>Owner:</strong> ${project.ownerName || 'Unknown'}</p>
+                                <p><strong>Created:</strong> ${project.createdAt?.toDate().toLocaleDateString() || 'Unknown'}</p>
+                            </div>
+                            ${renderProjectStagesView(project)}
+                            <div class="modal-actions">
+                                <button class="btn btn-secondary" id="closeViewModal">Close</button>
+                            </div>
+                        </div>
+                    `;
+                    
+                    document.body.appendChild(modal);
+                    
+                    // Close modal event
+                    modal.querySelector('#closeViewModal').addEventListener('click', () => {
+                        document.body.removeChild(modal);
+                    });
+                    
+                    // Close on background click
+                    modal.addEventListener('click', (e) => {
+                        if (e.target === modal) {
+                            document.body.removeChild(modal);
+                        }
+                    });
+                }
+            } catch (error) {
+                showNotification('Error loading project: ' + error.message, 'error');
+            }
+        }
+
+        function renderProjectStagesView(project) {
+            const stages = [
+                { key: 'proposal', name: 'Proposal', icon: 'fa-file-alt' },
+                { key: 'dataCollection', name: 'Data Collection Tool', icon: 'fa-tools' },
+                { key: 'ethicalApproval', name: 'Ethical Approval', icon: 'fa-clipboard-check' },
+                { key: 'dataAnalysis', name: 'Data Analysis', icon: 'fa-chart-bar' },
+                { key: 'manuscript', name: 'Manuscript Writing', icon: 'fa-pen-fancy' },
+                { key: 'submission', name: 'Submission', icon: 'fa-paper-plane' }
+            ];
+            
+            let html = '';
+            stages.forEach(stage => {
+                const stageData = project[stage.key] || {};
+                html += `
+                    <div class="form-section">
+                        <div class="section-title">
+                            <i class="fas ${stage.icon}"></i>
+                            ${stage.name}
+                        </div>
+                        <p><strong>Status:</strong> ${(stageData.status || 'not-started').replace('-', ' ').toUpperCase()}</p>
+                        ${stageData.person ? `<p><strong>Person(s):</strong> ${stageData.person}</p>` : ''}
+                        ${stageData.journal ? `<p><strong>Journal:</strong> ${stageData.journal}</p>` : ''}
+                        ${stageData.state ? `<p><strong>Submission State:</strong> ${stageData.state}</p>` : ''}
+                        ${stageData.link ? `<p><strong>Link:</strong> <a href="${stageData.link}" target="_blank">${stageData.link}</a></p>` : ''}
+                    </div>
+                `;
+            });
+            
+            return html;
+        }
+
+        // Edit project function
+        async function editProject(projectId) {
+            try {
+                const projectDoc = await db.collection('projects').doc(projectId).get();
+                if (projectDoc.exists) {
+                    const project = projectDoc.data();
+                    
+                    // Set form to edit mode
+                    document.getElementById('editingProjectId').value = projectId;
+                    document.getElementById('formTitle').textContent = `Edit Project: ${project.title}`;
+                    document.getElementById('saveProject').style.display = 'none';
+                    document.getElementById('updateProject').style.display = 'inline-block';
+                    document.getElementById('cancelEdit').style.display = 'inline-block';
+                    
+                    // Populate form fields
+                    document.getElementById('projectTitle').value = project.title || '';
+                    
+                    // Set status toggles for each stage
+                    setStatusToggle('proposal', project.proposal?.status || 'not-started');
+                    setStatusToggle('dataCollection', project.dataCollection?.status || 'not-started');
+                    setStatusToggle('ethicalApproval', project.ethicalApproval?.status || 'not-started');
+                    setStatusToggle('dataAnalysis', project.dataAnalysis?.status || 'not-started');
+                    setStatusToggle('manuscript', project.manuscript?.status || 'not-started');
+                    setStatusToggle('submission', project.submission?.status || 'not-started');
+                    
+                    // Populate conditional fields
+                    populateConditionalFields(project);
+                    
+                    // Switch to Add Project tab
+                    document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+                    document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+                    
+                    document.querySelector('.tab[data-tab="add-project"]').classList.add('active');
+                    document.getElementById('add-project').classList.add('active');
+                    
+                    showNotification('Project loaded for editing', 'success');
+                }
+            } catch (error) {
+                showNotification('Error loading project for editing: ' + error.message, 'error');
+                console.error('Error loading project:', error);
+            }
+        }
+
+        // Set status toggle for a stage
+        function setStatusToggle(stage, status) {
+            const toggle = document.querySelector(`.status-toggle[data-stage="${stage}"]`);
+            const options = toggle.querySelectorAll('.toggle-option');
+            
+            options.forEach(option => option.classList.remove('active'));
+            toggle.querySelector(`.toggle-option[data-status="${status}"]`).classList.add('active');
+            
+            // Show/hide conditional fields
+            const conditionalFields = document.querySelectorAll(`[id^="${stage}-"]`);
+            conditionalFields.forEach(field => {
+                field.classList.remove('active');
+            });
+            document.getElementById(`${stage}-${status}`).classList.add('active');
+        }
+
+        // Populate conditional fields with project data
+        function populateConditionalFields(project) {
+            // Proposal
+            if (project.proposal?.status === 'in-progress') {
+                // Set any in-progress fields if needed
+            } else if (project.proposal?.status === 'done') {
+                // Set any done fields if needed
+            }
+            
+            // Data Collection
+            document.getElementById('toolLink').value = project.dataCollection?.link || '';
+            document.getElementById('toolDoneLink').value = project.dataCollection?.link || '';
+            
+            // Data Analysis
+            document.getElementById('analysisPerson').value = project.dataAnalysis?.person || '';
+            document.getElementById('analysisDonePerson').value = project.dataAnalysis?.person || '';
+            
+            // Manuscript Writing
+            document.getElementById('writingPerson').value = project.manuscript?.person || '';
+            document.getElementById('writingDonePerson').value = project.manuscript?.person || '';
+            
+            // Submission
+            document.getElementById('submissionPerson').value = project.submission?.person || '';
+            document.getElementById('submissionDonePerson').value = project.submission?.person || '';
+            document.getElementById('targetJournal').value = project.submission?.journal || '';
+            document.getElementById('submissionJournal').value = project.submission?.journal || '';
+            document.getElementById('submissionState').value = project.submission?.state || 'submitted';
+        }
+
+        // Reset form to create mode
+        function resetFormToCreateMode() {
+            document.getElementById('editingProjectId').value = '';
+            document.getElementById('formTitle').textContent = 'Project Details';
+            document.getElementById('saveProject').style.display = 'inline-block';
+            document.getElementById('updateProject').style.display = 'none';
+            document.getElementById('cancelEdit').style.display = 'none';
+            document.getElementById('clearForm').click();
+        }
+
+        // Cancel edit button
+        document.getElementById('cancelEdit').addEventListener('click', resetFormToCreateMode);
+
+        // Show delete confirmation modal
+        function showDeleteModal(projectId) {
+            projectToDelete = projectId;
+            document.getElementById('deleteModal').style.display = 'flex';
+        }
+
+        // Hide delete confirmation modal
+        function hideDeleteModal() {
+            document.getElementById('deleteModal').style.display = 'none';
+            projectToDelete = null;
+        }
+
+        // Cancel delete button
+        document.getElementById('cancelDelete').addEventListener('click', hideDeleteModal);
+
+        // Confirm delete button
+        document.getElementById('confirmDelete').addEventListener('click', async () => {
+            if (projectToDelete) {
+                try {
+                    // Delete project
+                    await db.collection('projects').doc(projectToDelete).delete();
+                    
+                    // Delete associated chat room
+                    await db.collection('chats').doc(projectToDelete).delete();
+                    
+                    // Delete collaborations
+                    const collaborations = await db.collection('collaborations')
+                        .where('projectId', '==', projectToDelete)
+                        .get();
+                    
+                    const deletePromises = [];
+                    collaborations.forEach(doc => {
+                        deletePromises.push(doc.ref.delete());
+                    });
+                    
+                    await Promise.all(deletePromises);
+                    
+                    showNotification('Project deleted successfully!', 'success');
+                    hideDeleteModal();
+                    loadDashboardProjects();
+                    loadAllProjectsForFlow();
+                    loadAllChatRooms();
+                } catch (error) {
+                    showNotification('Error deleting project: ' + error.message, 'error');
+                }
+            }
+        });
+
+        // ==================== EXPORT FUNCTIONALITY ====================
+        // Export to Excel
+        document.getElementById('exportExcel').addEventListener('click', () => {
+            if (currentProjects.length === 0) {
+                showNotification('No projects to export!', 'error');
+                return;
+            }
+            
+            try {
+                // Create worksheet data
+                const worksheetData = [
+                    ['Project Title', 'Created Date', 'Proposal Status', 'Data Collection Status', 'Ethical Approval Status', 'Data Analysis Status', 'Manuscript Status', 'Submission Status']
+                ];
+                
+                currentProjects.forEach(project => {
+                    let createdDate = 'Unknown date';
+                    try {
+                        if (project.createdAt && project.createdAt.toDate) {
+                            createdDate = project.createdAt.toDate().toLocaleDateString();
+                        }
+                    } catch (e) {
+                        console.log('Date formatting error:', e);
+                    }
+                    
+                    worksheetData.push([
+                        project.title || 'Untitled',
+                        createdDate,
+                        project.proposal?.status || 'not-started',
+                        project.dataCollection?.status || 'not-started',
+                        project.ethicalApproval?.status || 'not-started',
+                        project.dataAnalysis?.status || 'not-started',
+                        project.manuscript?.status || 'not-started',
+                        project.submission?.status || 'not-started'
+                    ]);
+                });
+                
+                // Create workbook and worksheet
+                const wb = XLSX.utils.book_new();
+                const ws = XLSX.utils.aoa_to_sheet(worksheetData);
+                
+                // Add worksheet to workbook
+                XLSX.utils.book_append_sheet(wb, ws, 'Projects');
+                
+                // Generate Excel file and trigger download
+                XLSX.writeFile(wb, 'MRG_ResearchFlow_Projects.xlsx');
+                
+                showNotification('Projects exported to Excel successfully!', 'success');
+            } catch (error) {
+                showNotification('Error exporting to Excel: ' + error.message, 'error');
+                console.error('Export error:', error);
+            }
+        });
+
+        // Export to PDF
+        document.getElementById('exportPDF').addEventListener('click', () => {
+            if (currentProjects.length === 0) {
+                showNotification('No projects to export!', 'error');
+                return;
+            }
+            
+            try {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+                
+                // Add title
+                doc.setFontSize(20);
+                doc.text('MRG ResearchFlow - Projects Report', 20, 20);
+                
+                // Add date
+                doc.setFontSize(12);
+                doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 20, 30);
+                
+                let yPosition = 50;
+                
+                currentProjects.forEach((project, index) => {
+                    // Check if we need a new page
+                    if (yPosition > 250) {
+                        doc.addPage();
+                        yPosition = 20;
+                    }
+                    
+                    // Project title
+                    doc.setFontSize(16);
+                    doc.text(`${index + 1}. ${project.title || 'Untitled Project'}`, 20, yPosition);
+                    yPosition += 10;
+                    
+                    // Created date
+                    let createdDate = 'Unknown date';
+                    try {
+                        if (project.createdAt && project.createdAt.toDate) {
+                            createdDate = project.createdAt.toDate().toLocaleDateString();
+                        }
+                    } catch (e) {
+                        console.log('Date formatting error:', e);
+                    }
+                    
+                    doc.setFontSize(12);
+                    doc.text(`Created: ${createdDate}`, 20, yPosition);
+                    yPosition += 10;
+                    
+                    // Project stages
+                    const stages = [
+                        { name: 'Proposal', status: project.proposal?.status || 'not-started' },
+                        { name: 'Data Collection', status: project.dataCollection?.status || 'not-started' },
+                        { name: 'Ethical Approval', status: project.ethicalApproval?.status || 'not-started' },
+                        { name: 'Data Analysis', status: project.dataAnalysis?.status || 'not-started' },
+                        { name: 'Manuscript Writing', status: project.manuscript?.status || 'not-started' },
+                        { name: 'Submission', status: project.submission?.status || 'not-started' }
+                    ];
+                    
+                    stages.forEach(stage => {
+                        if (yPosition > 270) {
+                            doc.addPage();
+                            yPosition = 20;
+                        }
+                        
+                        doc.text(`- ${stage.name}: ${stage.status.replace('-', ' ').toUpperCase()}`, 25, yPosition);
+                        yPosition += 7;
+                    });
+                    
+                    yPosition += 10; // Add space between projects
+                });
+                
+                // Save the PDF
+                doc.save('MRG_ResearchFlow_Projects.pdf');
+                
+                showNotification('Projects exported to PDF successfully!', 'success');
+            } catch (error) {
+                showNotification('Error exporting to PDF: ' + error.message, 'error');
+                console.error('PDF export error:', error);
+            }
+        });
+
+        // ==================== CHAT HOUSE FUNCTIONS ====================
+        // Load ALL chat rooms (all projects)
+        async function loadAllChatRooms() {
+            const user = auth.currentUser;
+            if (!user) return;
+
+            try {
+                console.log('Loading all chat rooms');
+                
+                // Get all projects
+                const projectsSnapshot = await db.collection('projects').get();
+                
+                const chatRooms = [];
+                
+                projectsSnapshot.forEach(doc => {
+                    const projectData = doc.data();
+                    const isOwner = projectData.ownerId === user.uid;
+                    
+                    chatRooms.push({
+                        id: doc.id,
+                        title: projectData.title,
+                        isOwner: isOwner,
+                        ownerId: projectData.ownerId,
+                        ownerName: projectData.ownerName,
+                        createdAt: projectData.createdAt,
+                        type: 'project'
+                    });
+                });
+                
+                // Sort by creation date
+                chatRooms.sort((a, b) => {
+                    if (!a.createdAt || !b.createdAt) return 0;
+                    return b.createdAt.toDate().getTime() - a.createdAt.toDate().getTime();
+                });
+                
+                displayChatRooms(chatRooms);
+                
+            } catch (error) {
+                console.error('Error loading chat rooms:', error);
+                showNotification('Error loading chat rooms: ' + error.message, 'error');
+            }
+        }
+
+        // Display chat rooms in sidebar
+        function displayChatRooms(rooms) {
+            const chatRoomList = document.getElementById('chatRoomList');
+            chatRoomList.innerHTML = '';
+            
+            if (rooms.length === 0) {
+                chatRoomList.innerHTML = `
+                    <div class="empty-chat-state" style="height: auto; padding: 20px;">
+                        <i class="fas fa-comments" style="font-size: 2rem;"></i>
+                        <div class="empty-chat-text" style="font-size: 1rem;">
+                            No projects available yet. Create a project to start chatting.
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+            
+            rooms.forEach(room => {
+                const roomElement = document.createElement('div');
+                roomElement.className = 'chat-room-item';
+                roomElement.dataset.roomId = room.id;
+                
+                let roomInfo = '';
+                if (room.isOwner) {
+                    roomInfo = 'Owner';
+                } else {
+                    roomInfo = `Owner: ${room.ownerName || 'Unknown'}`;
+                }
+                
+                roomElement.innerHTML = `
+                    <div class="chat-room-title">${room.title}</div>
+                    <div class="chat-room-meta">
+                        <span>${roomInfo}</span>
+                        ${room.isOwner ? '<i class="fas fa-crown" title="Project Owner"></i>' : ''}
+                    </div>
+                `;
+                
+                roomElement.addEventListener('click', () => {
+                    openChatRoom(room.id, room.title, room.isOwner, room.ownerId);
+                });
+                
+                chatRoomList.appendChild(roomElement);
+            });
+        }
+
+        // Open a chat room - NOW ALLOWING EVERYONE TO SEND MESSAGES
+        async function openChatRoom(roomId, roomTitle, isOwner, ownerId) {
+            // Remove active class from all rooms
+            document.querySelectorAll('.chat-room-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            
+            // Add active class to selected room
+            const selectedRoom = document.querySelector(`.chat-room-item[data-room-id="${roomId}"]`);
+            if (selectedRoom) {
+                selectedRoom.classList.add('active');
+            }
+            
+            currentChatRoom = {
+                id: roomId,
+                title: roomTitle,
+                isOwner: isOwner,
+                ownerId: ownerId
+            };
+            
+            // Show chat interface
+            document.getElementById('emptyChatState').style.display = 'none';
+            document.getElementById('activeChatHeader').style.display = 'block';
+            document.getElementById('chatMessages').style.display = 'flex';
+            document.getElementById('chatInputContainer').style.display = 'flex';
+            document.getElementById('chatActions').style.display = 'flex';
+            
+            // Update chat header
+            document.getElementById('currentChatTitle').textContent = roomTitle;
+            document.getElementById('currentChatInfo').textContent = isOwner ? 
+                'You are the owner of this project' : 
+                `Project owned by ${currentChatRoom.ownerName || 'Unknown'}`;
+            
+            // Show/hide manage collaborators button (only for owner)
+            document.getElementById('manageCollaboratorsBtn').style.display = isOwner ? 'inline-block' : 'none';
+            
+            // Clear existing messages
+            document.getElementById('chatMessages').innerHTML = '';
+            
+            // Unsubscribe from previous chat listener
+            if (chatUnsubscribe) {
+                chatUnsubscribe();
+            }
+            
+            // ====== KEY CHANGE: EVERYONE CAN SEND MESSAGES ======
+            // Always enable chat input for everyone
+            document.getElementById('chatInput').disabled = false;
+            document.getElementById('sendMessageBtn').disabled = false;
+            document.getElementById('chatInput').placeholder = "Type your message here... Anyone can participate!";
+            
+            // Load existing messages
+            await loadChatMessages(roomId);
+            
+            // Setup real-time listener for new messages
+            setupChatListener(roomId);
+            
+            // Load collaborators for this room (if owner)
+            if (isOwner) {
+                loadRoomCollaborators(roomId);
+            }
+        }
+
+        // Load chat messages for a room
+        async function loadChatMessages(roomId) {
+            try {
+                const messagesSnapshot = await db.collection('chats')
+                    .doc(roomId)
+                    .collection('messages')
+                    .orderBy('timestamp', 'asc')
+                    .limit(100)
+                    .get();
+                
+                const messagesContainer = document.getElementById('chatMessages');
+                messagesContainer.innerHTML = '';
+                
+                messagesSnapshot.forEach(doc => {
+                    const message = doc.data();
+                    displayMessage(message, doc.id);
+                });
+                
+                // Scroll to bottom
+                setTimeout(() => {
+                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                }, 100);
+                
+            } catch (error) {
+                console.error('Error loading messages:', error);
+                showNotification('Error loading chat messages', 'error');
+            }
+        }
+
+        // Setup real-time listener for chat messages
+        function setupChatListener(roomId) {
+            const user = auth.currentUser;
+            if (!user) return;
+            
+            chatUnsubscribe = db.collection('chats')
+                .doc(roomId)
+                .collection('messages')
+                .orderBy('timestamp', 'asc')
+                .onSnapshot((snapshot) => {
+                    snapshot.docChanges().forEach((change) => {
+                        if (change.type === 'added') {
+                            const message = change.doc.data();
+                            
+                            // Check if message already exists in DOM
+                            const messagesContainer = document.getElementById('chatMessages');
+                            const existingMessages = messagesContainer.querySelectorAll('.message-container');
+                            let messageExists = false;
+                            
+                            for (let msg of existingMessages) {
+                                if (msg.dataset.messageId === change.doc.id) {
+                                    messageExists = true;
+                                    break;
+                                }
+                            }
+                            
+                            if (!messageExists) {
+                                displayMessage(message, change.doc.id);
+                                
+                                // Scroll to bottom
+                                setTimeout(() => {
+                                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                                }, 100);
+                            }
+                        }
+                    });
+                }, (error) => {
+                    console.error('Chat listener error:', error);
+                    showNotification('Chat connection error', 'error');
+                });
+        }
+
+        // Display a message in the chat
+        function displayMessage(message, messageId = null) {
+            const user = auth.currentUser;
+            const isCurrentUser = message.userId === user.uid;
+            
+            const messageContainer = document.createElement('div');
+            messageContainer.className = `message-container ${isCurrentUser ? 'current-user' : 'other-user'}`;
+            if (messageId) {
+                messageContainer.dataset.messageId = messageId;
+            }
+            
+            // Format timestamp
+            let timestamp = 'Just now';
+            if (message.timestamp && message.timestamp.toDate) {
+                timestamp = message.timestamp.toDate().toLocaleTimeString([], { 
+                    hour: '2-digit', 
+                    minute: '2-digit' 
+                });
+            }
+            
+            // Get user's first initial for avatar
+            const userInitial = message.userName ? message.userName.charAt(0).toUpperCase() : '?';
+            
+            // Check if it's a system message
+            if (message.system) {
+                messageContainer.innerHTML = `
+                    <div class="message-bubble" style="background-color: var(--light-gray); color: var(--dark-gray); font-style: italic; width: 100%; text-align: center;">
+                        <div class="message-text">${message.text}</div>
+                        <div class="message-time">${timestamp}</div>
+                    </div>
+                `;
+            } else {
+                // Make the message header clickable if current user is the project owner
+                const isOwner = currentChatRoom && currentChatRoom.isOwner;
+                const isNotCurrentUser = !isCurrentUser;
+                const messageHeaderClass = isOwner && isNotCurrentUser ? 'message-header clickable-user' : 'message-header';
+                const clickableAttr = isOwner && isNotCurrentUser ? `data-user-id="${message.userId}" data-user-name="${message.userName}"` : '';
+                
+                messageContainer.innerHTML = `
+                    <div class="${messageHeaderClass}" ${clickableAttr}>
+                        <div class="message-avatar">${userInitial}</div>
+                        <div class="message-sender">${message.userName || 'Unknown'}</div>
+                    </div>
+                    <div class="message-text">${message.text}</div>
+                    <div class="message-time">${timestamp}</div>
+                `;
+            }
+            
+            document.getElementById('chatMessages').appendChild(messageContainer);
+            
+            // Add click event to user headers if current user is owner
+            if (currentChatRoom && currentChatRoom.isOwner && !isCurrentUser && !message.system) {
+                const messageHeader = messageContainer.querySelector('.clickable-user');
+                if (messageHeader) {
+                    messageHeader.addEventListener('click', (e) => {
+                        const userId = e.currentTarget.dataset.userId;
+                        const userName = e.currentTarget.dataset.userName;
+                        showUserActionMenu(e, userId, userName);
+                    });
+                }
+            }
+        }
+
+        // Show user action menu
+        function showUserActionMenu(event, userId, userName) {
+            selectedUserForAction = { id: userId, name: userName };
+            
+            const menu = document.getElementById('userActionMenu');
+            menu.style.display = 'block';
+            menu.style.position = 'fixed';
+            menu.style.left = `${event.clientX}px`;
+            menu.style.top = `${event.clientY}px`;
+            menu.classList.add('show');
+            
+            // Close menu when clicking elsewhere
+            setTimeout(() => {
+                document.addEventListener('click', closeUserActionMenu);
+            }, 10);
+        }
+
+        // Close user action menu
+        function closeUserActionMenu(event) {
+            const menu = document.getElementById('userActionMenu');
+            if (!menu.contains(event.target)) {
+                menu.classList.remove('show');
+                setTimeout(() => {
+                    menu.style.display = 'none';
+                }, 200);
+                document.removeEventListener('click', closeUserActionMenu);
+            }
+        }
+
+        // Add as collaborator to current project
+        document.getElementById('addToCurrentProject').addEventListener('click', async () => {
+            if (!selectedUserForAction || !currentChatRoom) return;
+            
+            try {
+                // Check if already a collaborator
+                const existingCollab = await db.collection('collaborations')
+                    .where('projectId', '==', currentChatRoom.id)
+                    .where('collaboratorId', '==', selectedUserForAction.id)
+                    .get();
+                
+                if (!existingCollab.empty) {
+                    showNotification('User is already a collaborator on this project', 'error');
+                    return;
+                }
+                
+                // Get user email
+                const userDoc = await db.collection('users').doc(selectedUserForAction.id).get();
+                if (!userDoc.exists) {
+                    showNotification('User not found', 'error');
+                    return;
+                }
+                
+                const userData = userDoc.data();
+                
+                // Add collaboration
+                await db.collection('collaborations').add({
+                    projectId: currentChatRoom.id,
+                    ownerId: auth.currentUser.uid,
+                    collaboratorId: selectedUserForAction.id,
+                    collaboratorEmail: userData.email,
+                    permissions: ['view', 'edit', 'chat'],
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                
+                // Add system message to chat
+                await db.collection('chats')
+                    .doc(currentChatRoom.id)
+                    .collection('messages')
+                    .add({
+                        userId: auth.currentUser.uid,
+                        userName: currentUserData.name,
+                        text: `${currentUserData.name} added ${selectedUserForAction.name} as a collaborator (now has editing permissions)`,
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                        system: true
+                    });
+                
+                showNotification(`${selectedUserForAction.name} added as collaborator`, 'success');
+                
+                // Close menu
+                document.getElementById('userActionMenu').classList.remove('show');
+                setTimeout(() => {
+                    document.getElementById('userActionMenu').style.display = 'none';
+                }, 200);
+                
+            } catch (error) {
+                showNotification('Error adding collaborator: ' + error.message, 'error');
+            }
+        });
+
+        // Invite to another project
+        document.getElementById('inviteToOtherProject').addEventListener('click', async () => {
+            if (!selectedUserForAction) return;
+            
+            // Show project selection modal
+            document.getElementById('inviteUserName').textContent = selectedUserForAction.name;
+            document.getElementById('projectSelectionModal').style.display = 'flex';
+            
+            // Load user's projects
+            await loadUserProjectsForInvite();
+        });
+
+        // Load user's projects for invitation
+        async function loadUserProjectsForInvite() {
+            const user = auth.currentUser;
+            if (!user) return;
+            
+            try {
+                const projectsSnapshot = await db.collection('projects')
+                    .where('ownerId', '==', user.uid)
+                    .get();
+                
+                const projectList = document.getElementById('projectSelectionList');
+                projectList.innerHTML = '';
+                
+                projectsSnapshot.forEach(doc => {
+                    const projectData = doc.data();
+                    
+                    // Skip current project
+                    if (currentChatRoom && doc.id === currentChatRoom.id) return;
+                    
+                    const projectItem = document.createElement('div');
+                    projectItem.className = 'project-selection-item';
+                    projectItem.dataset.projectId = doc.id;
+                    projectItem.innerHTML = `
+                        <div style="font-weight: 600;">${projectData.title}</div>
+                        <div style="font-size: 0.8rem; color: var(--dark-gray);">Created: ${projectData.createdAt?.toDate().toLocaleDateString() || 'Unknown'}</div>
+                    `;
+                    
+                    projectItem.addEventListener('click', () => {
+                        // Remove selection from all items
+                        document.querySelectorAll('.project-selection-item').forEach(item => {
+                            item.style.backgroundColor = '';
+                        });
+                        
+                        // Select this item
+                        projectItem.style.backgroundColor = 'var(--light-pink)';
+                        selectedProjectForInvite = doc.id;
+                        document.getElementById('confirmInvite').disabled = false;
+                    });
+                    
+                    projectList.appendChild(projectItem);
+                });
+                
+                if (projectList.children.length === 0) {
+                    projectList.innerHTML = '<p>No other projects found. Create more projects to invite collaborators.</p>';
+                }
+                
+            } catch (error) {
+                console.error('Error loading projects for invitation:', error);
+                showNotification('Error loading projects', 'error');
+            }
+        }
+
+        // Send invitation
+        document.getElementById('confirmInvite').addEventListener('click', async () => {
+            if (!selectedUserForAction || !selectedProjectForInvite) return;
+            
+            try {
+                // Get project details
+                const projectDoc = await db.collection('projects').doc(selectedProjectForInvite).get();
+                if (!projectDoc.exists) {
+                    showNotification('Project not found', 'error');
+                    return;
+                }
+                
+                const projectData = projectDoc.data();
+                
+                // Check if already a collaborator
+                const existingCollab = await db.collection('collaborations')
+                    .where('projectId', '==', selectedProjectForInvite)
+                    .where('collaboratorId', '==', selectedUserForAction.id)
+                    .get();
+                
+                if (!existingCollab.empty) {
+                    showNotification('User is already a collaborator on this project', 'error');
+                    return;
+                }
+                
+                // Get user email
+                const userDoc = await db.collection('users').doc(selectedUserForAction.id).get();
+                if (!userDoc.exists) {
+                    showNotification('User not found', 'error');
+                    return;
+                }
+                
+                const userData = userDoc.data();
+                
+                // Add collaboration
+                await db.collection('collaborations').add({
+                    projectId: selectedProjectForInvite,
+                    ownerId: auth.currentUser.uid,
+                    collaboratorId: selectedUserForAction.id,
+                    collaboratorEmail: userData.email,
+                    permissions: ['view', 'edit', 'chat'],
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                
+                // Add system message to the project's chat
+                await db.collection('chats')
+                    .doc(selectedProjectForInvite)
+                    .collection('messages')
+                    .add({
+                        userId: auth.currentUser.uid,
+                        userName: currentUserData.name,
+                        text: `${currentUserData.name} invited ${selectedUserForAction.name} to this project as a collaborator`,
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                        system: true
+                    });
+                
+                showNotification(`Invited ${selectedUserForAction.name} to ${projectData.title}`, 'success');
+                
+                // Close modal
+                document.getElementById('projectSelectionModal').style.display = 'none';
+                selectedProjectForInvite = null;
+                document.getElementById('confirmInvite').disabled = true;
+                
+                // Close user action menu
+                document.getElementById('userActionMenu').classList.remove('show');
+                setTimeout(() => {
+                    document.getElementById('userActionMenu').style.display = 'none';
+                }, 200);
+                
+            } catch (error) {
+                showNotification('Error sending invitation: ' + error.message, 'error');
+            }
+        });
+
+        // Cancel project selection
+        document.getElementById('cancelProjectSelection').addEventListener('click', () => {
+            document.getElementById('projectSelectionModal').style.display = 'none';
+            selectedProjectForInvite = null;
+            document.getElementById('confirmInvite').disabled = true;
+        });
+
+        // Send a message - NOW ALLOWED FOR EVERYONE
+        document.getElementById('sendMessageBtn').addEventListener('click', async () => {
+            await sendMessage();
+        });
+
+        // Send message on Enter key (with Shift for new line)
+        document.getElementById('chatInput').addEventListener('keydown', async (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                await sendMessage();
+            }
+        });
+
+        async function sendMessage() {
+            const user = auth.currentUser;
+            if (!user || !currentChatRoom) return;
+            
+            const messageText = document.getElementById('chatInput').value.trim();
+            if (!messageText) return;
+            
+            try {
+                const userDoc = await db.collection('users').doc(user.uid).get();
+                const userData = userDoc.data();
+                
+                // Add message to Firestore
+                await db.collection('chats')
+                    .doc(currentChatRoom.id)
+                    .collection('messages')
+                    .add({
+                        userId: user.uid,
+                        userName: userData.name,
+                        text: messageText,
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                
+                // Clear input
+                document.getElementById('chatInput').value = '';
+                
+                // Reset textarea height
+                document.getElementById('chatInput').style.height = 'auto';
+                
+            } catch (error) {
+                console.error('Error sending message:', error);
+                showNotification('Error sending message: ' + error.message, 'error');
+            }
+        }
+
+        // Auto-resize textarea
+        document.getElementById('chatInput').addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 100) + 'px';
+        });
+
+        // Manage collaborators button
+        document.getElementById('manageCollaboratorsBtn').addEventListener('click', () => {
+            if (currentChatRoom && currentChatRoom.isOwner) {
+                document.getElementById('collaboratorModal').style.display = 'flex';
+                loadRoomCollaborators(currentChatRoom.id);
+            }
+        });
+
+        // Close collaborator modal
+        document.getElementById('closeCollaboratorModal').addEventListener('click', () => {
+            document.getElementById('collaboratorModal').style.display = 'none';
+            document.getElementById('collaboratorSearch').value = '';
+            document.getElementById('userSearchResults').innerHTML = '';
+        });
+
+        // ==================== COLLABORATOR MANAGEMENT ====================
+        // Load collaborators for a chat room
+        async function loadRoomCollaborators(roomId) {
+            try {
+                // Load existing collaborations
+                const collaborationsSnapshot = await db.collection('collaborations')
+                    .where('projectId', '==', roomId)
+                    .get();
+                
+                const collaboratorsList = document.getElementById('currentCollaboratorsList');
+                collaboratorsList.innerHTML = '';
+                
+                if (collaborationsSnapshot.empty) {
+                    collaboratorsList.innerHTML = '<p>No collaborators yet. Add some using the search above.</p>';
+                    return;
+                }
+                
+                collaborationsSnapshot.forEach(doc => {
+                    const collab = doc.data();
+                    const collaboratorTag = document.createElement('div');
+                    collaboratorTag.className = 'collaborator-tag';
+                    collaboratorTag.innerHTML = `
+                        <span>${collab.collaboratorEmail}</span>
+                        <i class="fas fa-times remove-collaborator" data-collab-id="${doc.id}"></i>
+                    `;
+                    collaboratorsList.appendChild(collaboratorTag);
+                });
+                
+                // Add event listeners for remove buttons
+                document.querySelectorAll('.remove-collaborator').forEach(btn => {
+                    btn.addEventListener('click', async (e) => {
+                        const collabId = e.target.dataset.collabId;
+                        await removeCollaborator(collabId);
+                    });
+                });
+                
+            } catch (error) {
+                console.error('Error loading collaborators:', error);
+            }
+        }
+
+        // Remove a collaborator
+        async function removeCollaborator(collabId) {
+            try {
+                await db.collection('collaborations').doc(collabId).delete();
+                showNotification('Collaborator removed successfully', 'success');
+                loadRoomCollaborators(currentChatRoom.id);
+            } catch (error) {
+                showNotification('Error removing collaborator: ' + error.message, 'error');
+            }
+        }
+
+        // Search for users to add as collaborators
+        document.getElementById('collaboratorSearch').addEventListener('input', async (e) => {
+            const searchEmail = e.target.value.trim();
+            if (!searchEmail) {
+                document.getElementById('userSearchResults').innerHTML = '';
+                return;
+            }
+            
+            try {
+                // Search for users by email
+                const usersSnapshot = await db.collection('users')
+                    .where('email', '>=', searchEmail)
+                    .where('email', '<=', searchEmail + '\uf8ff')
+                    .limit(5)
+                    .get();
+                
+                const resultsDiv = document.getElementById('userSearchResults');
+                resultsDiv.innerHTML = '';
+                
+                if (usersSnapshot.empty) {
+                    resultsDiv.innerHTML = '<p>No users found</p>';
+                    return;
+                }
+                
+                usersSnapshot.forEach(doc => {
+                    const userData = doc.data();
+                    if (userData.email === auth.currentUser.email) return; // Skip current user
+                    
+                    const userItem = document.createElement('div');
+                    userItem.className = 'chat-room-item';
+                    userItem.style.cursor = 'pointer';
+                    userItem.innerHTML = `
+                        <div class="chat-room-title">${userData.name}</div>
+                        <div class="chat-room-meta">${userData.email}</div>
+                    `;
+                    
+                    userItem.addEventListener('click', async () => {
+                        await addCollaborator(doc.id, userData.email);
+                        document.getElementById('collaboratorSearch').value = '';
+                        resultsDiv.innerHTML = '';
+                    });
+                    
+                    resultsDiv.appendChild(userItem);
+                });
+                
+            } catch (error) {
+                console.error('Error searching users:', error);
+            }
+        });
+
+        // Add a collaborator to the chat room
+        async function addCollaborator(userId, userEmail) {
+            if (!currentChatRoom || !currentChatRoom.isOwner) return;
+            
+            try {
+                // Check if already a collaborator
+                const existingCollab = await db.collection('collaborations')
+                    .where('projectId', '==', currentChatRoom.id)
+                    .where('collaboratorId', '==', userId)
+                    .get();
+                
+                if (!existingCollab.empty) {
+                    showNotification('User is already a collaborator', 'error');
+                    return;
+                }
+                
+                // Add collaboration
+                await db.collection('collaborations').add({
+                    projectId: currentChatRoom.id,
+                    ownerId: auth.currentUser.uid,
+                    collaboratorId: userId,
+                    collaboratorEmail: userEmail,
+                    permissions: ['view', 'chat'],
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                
+                showNotification('Collaborator added successfully', 'success');
+                loadRoomCollaborators(currentChatRoom.id);
+                
+                // Add system message to chat
+                await db.collection('chats')
+                    .doc(currentChatRoom.id)
+                    .collection('messages')
+                    .add({
+                        userId: auth.currentUser.uid,
+                        userName: currentUserData.name,
+                        text: `${currentUserData.name} added ${userEmail} as a collaborator (now has editing permissions)`,
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                        system: true
+                    });
+                
+            } catch (error) {
+                showNotification('Error adding collaborator: ' + error.message, 'error');
+            }
+        }
+
+        // ==================== PROJECT FLOW (Board View) ====================
+        // Load all projects for the Flow board
+        async function loadAllProjectsForFlow() {
+            try {
+                const projectsSnapshot = await db.collection('projects').get();
+                const flowProjectsList = document.getElementById('flowProjectsList');
+                flowProjectsList.innerHTML = '';
+                
+                const user = auth.currentUser;
+                if (!user) return;
+                
+                const projects = [];
+                projectsSnapshot.forEach(doc => {
+                    const projectData = doc.data();
+                    projects.push({
+                        id: doc.id,
+                        ...projectData
+                    });
+                });
+                
+                // Sort by creation date (newest first)
+                projects.sort((a, b) => {
+                    if (!a.createdAt || !b.createdAt) return 0;
+                    return b.createdAt.toDate().getTime() - a.createdAt.toDate().getTime();
+                });
+                
+                // Filter projects based on dropdown
+                const filter = document.getElementById('flowFilter').value;
+                let filteredProjects = projects;
+                
+                if (filter !== 'all') {
+                    filteredProjects = projects.filter(p => {
+                        const stage = p[filter];
+                        return stage && stage.status;
+                    });
+                }
+                
+                if (filteredProjects.length === 0) {
+                    flowProjectsList.innerHTML = '<p>No projects found matching your filter.</p>';
+                    return;
+                }
+                
+                filteredProjects.forEach(project => {
+                    const projectCard = document.createElement('div');
+                    projectCard.className = 'flow-board-card';
+                    
+                    // Calculate stage statistics
+                    const stages = ['proposal', 'dataCollection', 'ethicalApproval', 'dataAnalysis', 'manuscript', 'submission'];
+                    const stageStats = stages.map(stage => ({
+                        name: stage,
+                        status: project[stage]?.status || 'not-started'
+                    }));
+                    
+                    const notStarted = stageStats.filter(s => s.status === 'not-started').length;
+                    const inProgress = stageStats.filter(s => s.status === 'in-progress').length;
+                    const done = stageStats.filter(s => s.status === 'done').length;
+                    
+                    // Format date safely
+                    let createdDate = 'Unknown date';
+                    try {
+                        if (project.createdAt && project.createdAt.toDate) {
+                            createdDate = project.createdAt.toDate().toLocaleDateString();
+                        }
+                    } catch (e) {
+                        console.log('Date formatting error:', e);
+                    }
+                    
+                    // Get last updated date
+                    let updatedDate = 'Unknown';
+                    try {
+                        if (project.updatedAt && project.updatedAt.toDate) {
+                            updatedDate = project.updatedAt.toDate().toLocaleDateString();
+                        }
+                    } catch (e) {
+                        console.log('Date formatting error:', e);
+                    }
+                    
+                    projectCard.innerHTML = `
+                        <div class="flow-board-header">
+                            <div>
+                                <div class="flow-board-title">${project.title || 'Untitled Project'}</div>
+                                <div class="flow-board-owner">Owner: ${project.ownerName || 'Unknown'}</div>
+                            </div>
+                            <div class="flow-board-date">Created: ${createdDate}</div>
+                        </div>
+                        
+                        <div class="project-stages">
+                            <div class="stage ${project.proposal?.status || 'not-started'}">
+                                <div class="stage-icon"><i class="fas fa-file-alt"></i></div>
+                                <div class="stage-info">
+                                    <div class="stage-name">Proposal</div>
+                                    <div class="stage-status">${(project.proposal?.status || 'not-started').replace('-', ' ').toUpperCase()}</div>
+                                </div>
+                            </div>
+                            <div class="stage ${project.dataCollection?.status || 'not-started'}">
+                                <div class="stage-icon"><i class="fas fa-tools"></i></div>
+                                <div class="stage-info">
+                                    <div class="stage-name">Data Collection</div>
+                                    <div class="stage-status">${(project.dataCollection?.status || 'not-started').replace('-', ' ').toUpperCase()}</div>
+                                </div>
+                            </div>
+                            <div class="stage ${project.ethicalApproval?.status || 'not-started'}">
+                                <div class="stage-icon"><i class="fas fa-clipboard-check"></i></div>
+                                <div class="stage-info">
+                                    <div class="stage-name">Ethical Approval</div>
+                                    <div class="stage-status">${(project.ethicalApproval?.status || 'not-started').replace('-', ' ').toUpperCase()}</div>
+                                </div>
+                            </div>
+                            <div class="stage ${project.dataAnalysis?.status || 'not-started'}">
+                                <div class="stage-icon"><i class="fas fa-chart-bar"></i></div>
+                                <div class="stage-info">
+                                    <div class="stage-name">Data Analysis</div>
+                                    <div class="stage-status">${(project.dataAnalysis?.status || 'not-started').replace('-', ' ').toUpperCase()}</div>
+                                </div>
+                            </div>
+                            <div class="stage ${project.manuscript?.status || 'not-started'}">
+                                <div class="stage-icon"><i class="fas fa-pen-fancy"></i></div>
+                                <div class="stage-info">
+                                    <div class="stage-name">Manuscript Writing</div>
+                                    <div class="stage-status">${(project.manuscript?.status || 'not-started').replace('-', ' ').toUpperCase()}</div>
+                                </div>
+                            </div>
+                            <div class="stage ${project.submission?.status || 'not-started'}">
+                                <div class="stage-icon"><i class="fas fa-paper-plane"></i></div>
+                                <div class="stage-info">
+                                    <div class="stage-name">Submission</div>
+                                    <div class="stage-status">${(project.submission?.status || 'not-started').replace('-', ' ').toUpperCase()}</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="flow-board-stats">
+                            <div class="stat-item">
+                                <div class="stat-value">${notStarted}</div>
+                                <div class="stat-label">Not Started</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value">${inProgress}</div>
+                                <div class="stat-label">In Progress</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value">${done}</div>
+                                <div class="stat-label">Completed</div>
+                            </div>
+                        </div>
+                        
+                        <div style="margin-top: 15px; font-size: 0.8rem; color: var(--dark-gray);">
+                            Last updated: ${updatedDate}
+                        </div>
+                    `;
+                    
+                    flowProjectsList.appendChild(projectCard);
+                });
+                
+            } catch (error) {
+                console.error('Error loading all projects:', error);
+                showNotification('Error loading projects: ' + error.message, 'error');
+            }
+        }
+
+        // ==================== REAL-TIME LISTENERS ====================
+        // Real-time listener for project updates
+        function setupRealtimeListeners(userId) {
+            // Listen for project updates where user is owner
+            db.collection('projects')
+                .where('ownerId', '==', userId)
+                .onSnapshot((snapshot) => {
+                    console.log('Owned projects updated');
+                    loadDashboardProjects();
+                    loadAllProjectsForFlow();
+                    loadAllChatRooms();
+                }, (error) => {
+                    console.error('Error listening to owned projects:', error);
+                });
+            
+            // Listen for collaborations where user is collaborator
+            db.collection('collaborations')
+                .where('collaboratorId', '==', userId)
+                .onSnapshot((snapshot) => {
+                    console.log('Collaborations updated');
+                    loadDashboardProjects();
+                    loadAllProjectsForFlow();
+                    loadAllChatRooms();
+                }, (error) => {
+                    console.error('Error listening to collaborations:', error);
+                });
+            
+            // Listen for all projects for chat rooms
+            db.collection('projects')
+                .onSnapshot((snapshot) => {
+                    console.log('All projects updated (for chat)');
+                    loadAllChatRooms();
+                }, (error) => {
+                    console.error('Error listening to all projects:', error);
+                });
+        }
+
+        // ==================== HELPER FUNCTIONS ====================
+        function showNotification(message, type = 'info') {
+            const notification = document.getElementById('notification');
+            const notificationText = document.getElementById('notificationText');
+            
+            notificationText.textContent = message;
+            notification.className = `notification show`;
+            
+            // Set color based on type
+            if (type === 'error') {
+                notification.style.backgroundColor = '#dc3545';
+            } else if (type === 'success') {
+                notification.style.backgroundColor = '#28a745';
+            } else if (type === 'warning') {
+                notification.style.backgroundColor = '#ffc107';
+                notification.style.color = '#212529';
+            }
+            
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 3000);
+        }
+
+        function switchAuthTab(tabName) {
+            document.querySelectorAll('.auth-tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.auth-content').forEach(content => content.classList.remove('active'));
+            
+            document.querySelector(`.auth-tab[data-tab="${tabName}"]`).classList.add('active');
+            document.getElementById(`${tabName}Form`).classList.add('active');
+        }
+
+        // Clear form functionality
+        document.getElementById('clearForm').addEventListener('click', () => {
+            document.getElementById('projectTitle').value = '';
+            
+            // Reset all status toggles to "Not Started"
+            document.querySelectorAll('.status-toggle').forEach(toggle => {
+                const notStartedOption = toggle.querySelector('.toggle-option.not-started');
+                const options = toggle.querySelectorAll('.toggle-option');
+                
+                options.forEach(opt => opt.classList.remove('active'));
+                notStartedOption.classList.add('active');
+                
+                const stage = toggle.getAttribute('data-stage');
+                document.querySelectorAll(`[id^="${stage}-"]`).forEach(field => {
+                    field.classList.remove('active');
+                });
+                document.getElementById(`${stage}-not-started`).classList.add('active');
+            });
+            
+            // Clear all file inputs and previews
+            document.querySelectorAll('input[type="file"]').forEach(input => {
+                input.value = '';
+            });
+            document.querySelectorAll('.file-preview').forEach(preview => {
+                preview.innerHTML = '';
+                preview.style.display = 'none';
+            });
+            
+            // Clear all text inputs
+            document.querySelectorAll('input[type="text"], input[type="url"], textarea').forEach(input => {
+                input.value = '';
+            });
+            
+            // Reset select elements
+            document.getElementById('submissionState').selectedIndex = 0;
+        });
+
+        // Three-state toggle functionality
+        const statusToggles = document.querySelectorAll('.status-toggle');
+        
+        statusToggles.forEach(toggle => {
+            const options = toggle.querySelectorAll('.toggle-option');
+            const stage = toggle.getAttribute('data-stage');
+            
+            options.forEach(option => {
+                option.addEventListener('click', () => {
+                    const status = option.getAttribute('data-status');
+                    
+                    // Update active toggle
+                    options.forEach(opt => opt.classList.remove('active'));
+                    option.classList.add('active');
+                    
+                    // Show/hide conditional fields
+                    const conditionalFields = document.querySelectorAll(`[id^="${stage}-"]`);
+                    conditionalFields.forEach(field => {
+                        field.classList.remove('active');
+                    });
+                    document.getElementById(`${stage}-${status}`).classList.add('active');
+                });
+            });
+        });
+
+        // File upload functionality with preview
+        const uploadAreas = document.querySelectorAll('.upload-area');
+        
+        uploadAreas.forEach(area => {
+            const fileInput = area.querySelector('input[type="file"]');
+            const previewId = area.id + '-preview';
+            const previewArea = document.getElementById(previewId);
+            
+            area.addEventListener('click', () => {
+                fileInput.click();
+            });
+            
+            fileInput.addEventListener('change', () => {
+                if (fileInput.files.length) {
+                    updateFilePreview(fileInput, previewArea);
+                }
+            });
+        });
+
+        function updateFilePreview(fileInput, previewArea) {
+            previewArea.innerHTML = '';
+            previewArea.style.display = 'block';
+            
+            for (let i = 0; i < fileInput.files.length; i++) {
+                const file = fileInput.files[i];
+                const fileItem = document.createElement('div');
+                fileItem.className = 'file-item';
+                
+                fileItem.innerHTML = `
+                    <div class="file-info">
+                        <i class="fas fa-file file-icon"></i>
+                        <span>${file.name}</span>
+                    </div>
+                    <div class="file-actions">
+                        <button class="btn btn-secondary btn-small remove-file" data-file-index="${i}">Remove</button>
+                    </div>
+                `;
+                
+                previewArea.appendChild(fileItem);
+            }
+            
+            // Add event listeners for remove buttons
+            previewArea.querySelectorAll('.remove-file').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const index = e.target.getAttribute('data-file-index');
+                    // Create a new FileList without the removed file
+                    const dt = new DataTransfer();
+                    for (let i = 0; i < fileInput.files.length; i++) {
+                        if (i != index) {
+                            dt.items.add(fileInput.files[i]);
+                        }
+                    }
+                    fileInput.files = dt.files;
+                    updateFilePreview(fileInput, previewArea);
+                });
+            });
+        }
+
+        // Tab switching functionality
+        const tabs = document.querySelectorAll('.tab');
+        const tabContents = document.querySelectorAll('.tab-content');
+
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const tabId = tab.getAttribute('data-tab');
+                
+                // Update active tab
+                tabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                
+                // Show active content
+                tabContents.forEach(content => content.classList.remove('active'));
+                document.getElementById(tabId).classList.add('active');
+                
+                // Load data for specific tabs
+                if (tabId === 'flow') {
+                    loadAllProjectsForFlow();
+                } else if (tabId === 'chat-house') {
+                    loadAllChatRooms();
+                }
+            });
+        });
+
+        // Flow filter change listener
+        document.getElementById('flowFilter').addEventListener('change', () => {
+            loadAllProjectsForFlow();
+        });
+
+        // Auth tab switching
+        document.querySelectorAll('.auth-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                switchAuthTab(tab.getAttribute('data-tab'));
+            });
+        });
+
+        // Close modal when clicking outside
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('modal')) {
+                e.target.style.display = 'none';
+                
+                // Reset project selection
+                if (e.target.id === 'projectSelectionModal') {
+                    selectedProjectForInvite = null;
+                    document.getElementById('confirmInvite').disabled = true;
+                }
+            }
+        });
+
+        // Initialize when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            // Initialize chat input auto-resize
+            const chatInput = document.getElementById('chatInput');
+            if (chatInput) {
+                chatInput.style.height = 'auto';
+                chatInput.style.height = chatInput.scrollHeight + 'px';
+            }
+        });
+    </script>
+</body>
+</html>
